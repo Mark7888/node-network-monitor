@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useNodeDetails } from '../hooks/useNodeDetails';
 import { useMeasurements } from '@/modules/measurements/hooks/useMeasurements';
@@ -26,8 +26,11 @@ export default function NodeDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const [timeRange, setTimeRange] = useState<TimeRange>('day');
   
+  // Memoize nodeIds array to prevent infinite re-renders
+  const nodeIds = useMemo(() => id ? [id] : undefined, [id]);
+  
   const { node, isLoading: nodeLoading, error: nodeError, refetch: refetchNode } = useNodeDetails(id!);
-  const { data: measurements, isLoading: measurementsLoading, refetch: refetchMeasurements } = useMeasurements(timeRange, id ? [id] : undefined);
+  const { data: measurements, isLoading: measurementsLoading, refetch: refetchMeasurements } = useMeasurements(timeRange, nodeIds);
   const chartData = useChartData(measurements);
 
   // Auto-refresh
