@@ -184,7 +184,7 @@ func (s *Scheduler) syncFailedMeasurements() {
 	s.logger.Debug("Found unsent failed measurements", zap.Int("count", len(failed)))
 
 	if err := s.sender.SendFailedMeasurements(failed); err != nil {
-		s.logger.Error("Failed to sync failed measurements", zap.Error(err))
+		s.logger.Warn("Failed to sync failed measurements", zap.Error(err))
 		return
 	}
 
@@ -211,12 +211,16 @@ func (s *Scheduler) aliveWorker() {
 	defer ticker.Stop()
 
 	// Send immediately on start
-	s.aliveSender.SendAlive()
+	if err := s.aliveSender.SendAlive(); err != nil {
+		s.logger.Warn("Failed to send alive signal", zap.Error(err))
+	}
 
 	for {
 		select {
 		case <-ticker.C:
-			s.aliveSender.SendAlive()
+			if err := s.aliveSender.SendAlive(); err != nil {
+				s.logger.Warn("Failed to send alive signal", zap.Error(err))
+			}
 		case <-s.stopAliveChan:
 			return
 		}

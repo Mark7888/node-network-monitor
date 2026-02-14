@@ -37,7 +37,6 @@ func (a *AliveSender) SendAlive() error {
 
 	respData, err := a.client.Post("/api/v1/node/alive", request)
 	if err != nil {
-		a.logger.Error("Failed to send alive signal", zap.Error(err))
 		return err
 	}
 
