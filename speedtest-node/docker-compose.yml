@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  speedtest-node:
+    build: .
+    container_name: speedtest-node
+    restart: unless-stopped
+    environment:
+      - SPEEDTEST_NODE_NAME=${NODE_NAME:-home-node}
+      - SPEEDTEST_SERVER_URL=${SERVER_URL}
+      - SPEEDTEST_SERVER_API_KEY=${API_KEY}
+      - SPEEDTEST_CRON=${CRON:-*/10 * * * *}
+      - SPEEDTEST_LOG_LEVEL=${LOG_LEVEL:-info}
+      - SPEEDTEST_DB_PATH=/app/data/speedtest.db
+      - SPEEDTEST_LOG_OUTPUT=/app/logs/speedtest-node.log
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    network_mode: host  # Required for accurate network measurements

@@ -1,0 +1,11 @@
+.git
+.gitignore
+README.md
+.env
+.env.*
+!.env.example
+data/
+logs/
+speedtest-node
+*.db
+*.log
