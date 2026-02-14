@@ -18,7 +18,8 @@ export function useDashboard() {
     try {
       const data = await getDashboardSummary();
       setSummary(data);
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
       const errorMessage = err.response?.data?.error || 'Failed to fetch dashboard data';
       setError(errorMessage);
       toast.error(errorMessage);

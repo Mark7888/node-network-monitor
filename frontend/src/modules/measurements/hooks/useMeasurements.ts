@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AggregatedMeasurement } from '../types/measurement.types';
 import { getAggregatedMeasurements } from '../services/measurementService';
 import { getTimeRange, getAggregationInterval } from '@/shared/utils/date';
@@ -13,7 +13,7 @@ export function useMeasurements(timeRange: TimeRange, nodeIds?: string[]) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -29,18 +29,19 @@ export function useMeasurements(timeRange: TimeRange, nodeIds?: string[]) {
       });
 
       setData(response.data || []);
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
       const errorMessage = err.response?.data?.error || 'Failed to fetch measurements';
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [timeRange, nodeIds]);
 
   useEffect(() => {
     fetchData();
-  }, [timeRange, nodeIds?.join(',')]);
+  }, [fetchData]);
 
   return {
     data,

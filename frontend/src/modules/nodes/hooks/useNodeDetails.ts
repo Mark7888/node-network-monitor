@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { NodeDetails } from '../types/node.types';
 import { getNodeDetails } from '../services/nodeService';
 import toast from 'react-hot-toast';
@@ -11,27 +11,28 @@ export function useNodeDetails(nodeId: string) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
       const data = await getNodeDetails(nodeId);
       setNode(data);
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
       const errorMessage = err.response?.data?.error || 'Failed to fetch node details';
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [nodeId]);
 
   useEffect(() => {
     if (nodeId) {
       fetchData();
     }
-  }, [nodeId]);
+  }, [nodeId, fetchData]);
 
   return {
     node,

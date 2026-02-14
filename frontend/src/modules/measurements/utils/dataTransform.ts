@@ -1,6 +1,4 @@
 import { AggregatedMeasurement } from '../types/measurement.types';
-import { formatChartLabel } from '@/shared/utils/date';
-import { TimeRange } from '@/shared/utils/constants';
 
 /**
  * Transform aggregated data for chart display

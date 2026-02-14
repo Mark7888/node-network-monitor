@@ -5,7 +5,7 @@ import { useMeasurements } from '@/modules/measurements/hooks/useMeasurements';
 import { useChartData } from '@/modules/measurements/hooks/useChartData';
 import { useAutoRefresh } from '@/shared/hooks/useAutoRefresh';
 import { TIME_RANGES, TimeRange } from '@/shared/utils/constants';
-import { formatSpeed, formatLatency, formatPercent } from '@/shared/utils/format';
+import { formatSpeed, formatLatency } from '@/shared/utils/format';
 import { formatTimestamp } from '@/shared/utils/date';
 import Card from '@/shared/components/ui/Card';
 import Badge from '@/shared/components/ui/Badge';

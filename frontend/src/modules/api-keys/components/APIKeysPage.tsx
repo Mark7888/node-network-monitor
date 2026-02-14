@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAPIKeys } from '../hooks/useAPIKeys';
-import { APIKey, CreateAPIKeyResponse } from '../types/apiKey.types';
+import { CreateAPIKeyResponse } from '../types/apiKey.types';
 import { formatTimestamp, formatRelativeTime } from '@/shared/utils/date';
 import Card from '@/shared/components/ui/Card';
 import Button from '@/shared/components/ui/Button';
@@ -27,7 +27,7 @@ export default function APIKeysPage() {
 
   useEffect(() => {
     fetchAPIKeys();
-  }, []);
+  }, [fetchAPIKeys]);
 
   const handleCreateKey = async () => {
     if (!newKeyName.trim()) {

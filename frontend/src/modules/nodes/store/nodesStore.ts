@@ -27,9 +27,10 @@ export const useNodesStore = create<NodesStore>((set) => ({
     try {
       const data = await nodeService.getNodes();
       set({ nodes: data.nodes, isLoading: false });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
       set({
-        error: error.response?.data?.error || 'Failed to fetch nodes',
+        error: err.response?.data?.error || 'Failed to fetch nodes',
         isLoading: false,
       });
     }
@@ -40,9 +41,10 @@ export const useNodesStore = create<NodesStore>((set) => ({
     try {
       const data = await nodeService.getNodeDetails(nodeId);
       set({ selectedNode: data, isLoading: false });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
       set({
-        error: error.response?.data?.error || 'Failed to fetch node details',
+        error: err.response?.data?.error || 'Failed to fetch node details',
         isLoading: false,
       });
     }

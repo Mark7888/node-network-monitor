@@ -5,10 +5,9 @@ import { useChartData } from '@/modules/measurements/hooks/useChartData';
 import { useNodes } from '@/modules/nodes/hooks/useNodes';
 import { useAutoRefresh } from '@/shared/hooks/useAutoRefresh';
 import { TIME_RANGES, TimeRange } from '@/shared/utils/constants';
-import { formatMbps, formatLatency, formatNumber } from '@/shared/utils/format';
+import { formatMbps, formatLatency } from '@/shared/utils/format';
 import Card from '@/shared/components/ui/Card';
 import Spinner from '@/shared/components/ui/Spinner';
-import ErrorMessage from '@/shared/components/ui/ErrorMessage';
 import DownloadChart from '@/modules/measurements/components/charts/DownloadChart';
 import UploadChart from '@/modules/measurements/components/charts/UploadChart';
 import PingChart from '@/modules/measurements/components/charts/PingChart';
@@ -29,7 +28,7 @@ export default function DashboardPage() {
   // Initial fetch
   useEffect(() => {
     fetchNodes();
-  }, []);
+  }, [fetchNodes]);
 
   // Auto-refresh data
   useAutoRefresh(() => {

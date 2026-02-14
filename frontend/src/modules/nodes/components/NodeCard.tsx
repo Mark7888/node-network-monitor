@@ -1,12 +1,10 @@
 import { Node } from '../types/node.types';
-import { STATUS_BADGE_CLASS } from '@/shared/utils/constants';
 import { formatRelativeTime } from '@/shared/utils/date';
-import { formatSpeed, formatLatency } from '@/shared/utils/format';
 import Badge from '@/shared/components/ui/Badge';
 import Card from '@/shared/components/ui/Card';
 import Button from '@/shared/components/ui/Button';
 import { Link } from 'react-router-dom';
-import { Activity, Clock } from 'lucide-react';
+import { Clock } from 'lucide-react';
 
 interface NodeCardProps {
   node: Node;

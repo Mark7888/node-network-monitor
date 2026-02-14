@@ -1,6 +1,5 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, User } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import Input from '@/shared/components/ui/Input';
 import Button from '@/shared/components/ui/Button';

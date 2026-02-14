@@ -17,7 +17,7 @@ export default function NodesPage() {
   // Initial fetch
   useEffect(() => {
     fetchNodes();
-  }, []);
+  }, [fetchNodes]);
 
   // Auto-refresh
   useAutoRefresh(fetchNodes, env.refreshInterval);

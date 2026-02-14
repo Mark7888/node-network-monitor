@@ -23,7 +23,8 @@ export function useAPIKeys() {
     try {
       const data = await getAPIKeys();
       setAPIKeys(data.api_keys || []);
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
       const errorMessage = err.response?.data?.error || 'Failed to fetch API keys';
       setError(errorMessage);
       toast.error(errorMessage);
@@ -38,7 +39,8 @@ export function useAPIKeys() {
       toast.success('API key created successfully!');
       await fetchAPIKeys(); // Refresh list
       return data;
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
       const errorMessage = err.response?.data?.error || 'Failed to create API key';
       toast.error(errorMessage);
       return null;
@@ -50,7 +52,8 @@ export function useAPIKeys() {
       await updateAPIKey(id, { enabled });
       toast.success(`API key ${enabled ? 'enabled' : 'disabled'}`);
       await fetchAPIKeys(); // Refresh list
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
       const errorMessage = err.response?.data?.error || 'Failed to update API key';
       toast.error(errorMessage);
     }
@@ -61,7 +64,8 @@ export function useAPIKeys() {
       await deleteAPIKey(id);
       toast.success('API key deleted');
       await fetchAPIKeys(); // Refresh list
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
       const errorMessage = err.response?.data?.error || 'Failed to delete API key';
       toast.error(errorMessage);
     }

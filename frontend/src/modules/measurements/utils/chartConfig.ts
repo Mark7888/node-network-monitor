@@ -49,7 +49,7 @@ export function getNodeColor(index: number): string {
 export function generateChartOption(
   title: string,
   yAxisLabel: string,
-  series: any[],
+  series: EChartsOption['series'],
   formatter?: (value: number) => string
 ): EChartsOption {
   const baseConfig = getBaseChartConfig();

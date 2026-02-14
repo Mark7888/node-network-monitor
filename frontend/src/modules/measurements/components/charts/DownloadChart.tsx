@@ -1,7 +1,6 @@
 import BaseChart from './BaseChart';
 import { ChartSeries } from '../../utils/dataTransform';
 import { generateChartOption, getNodeColor } from '../../utils/chartConfig';
-import { EChartsOption } from 'echarts';
 
 interface DownloadChartProps {
   data: ChartSeries[];
@@ -14,7 +13,7 @@ interface DownloadChartProps {
 export default function DownloadChart({ data, height }: DownloadChartProps) {
   const series = data.map((nodeSeries, index) => ({
     name: nodeSeries.node_name,
-    type: 'line',
+    type: 'line' as const,
     smooth: true,
     data: nodeSeries.data.map((point) => [
       point.timestamp,

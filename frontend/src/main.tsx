@@ -9,7 +9,7 @@ import './index.css';
 /**
  * Setup API interceptors with router navigation
  */
-function App() {
+export function App() {
   useEffect(() => {
     // Initialize theme
     useThemeStore.getState().initTheme();

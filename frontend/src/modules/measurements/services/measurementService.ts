@@ -16,7 +16,7 @@ export async function getAggregatedMeasurements(
   params: MeasurementQueryParams
 ): Promise<AggregatedDataResponse> {
   // Build query params manually to handle array serialization
-  const queryParams: Record<string, any> = {};
+  const queryParams: Record<string, string | string[] | number> = {};
   
   // Add node_ids as repeated params if present (Gin expects ?node_ids=uuid1&node_ids=uuid2)
   // Axios will handle the array correctly with paramsSerializer
