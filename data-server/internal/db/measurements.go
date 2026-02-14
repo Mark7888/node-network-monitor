@@ -210,36 +210,26 @@ func (db *DB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.Time,
 	ctx, cancel := withTimeout()
 	defer cancel()
 
-	// Determine truncation based on interval
-	var truncFunc string
-	switch interval {
-	case "1h":
-		truncFunc = "date_trunc('hour', timestamp)"
-	case "6h":
-		truncFunc = "date_trunc('hour', timestamp) - (EXTRACT(HOUR FROM timestamp)::int % 6) * INTERVAL '1 hour'"
-	case "1d":
-		truncFunc = "date_trunc('day', timestamp)"
-	default:
-		truncFunc = "date_trunc('hour', timestamp)"
-	}
+	// Get database-specific date truncation function
+	truncFunc := db.getDateTruncSQL(interval)
 
 	// Build query
 	var whereClauses []string
 	var args []interface{}
 	argPos := 1
 
-	whereClauses = append(whereClauses, fmt.Sprintf("timestamp >= $%d", argPos))
+	whereClauses = append(whereClauses, fmt.Sprintf("timestamp >= %s", db.getPlaceholder(argPos)))
 	args = append(args, from)
 	argPos++
 
-	whereClauses = append(whereClauses, fmt.Sprintf("timestamp <= $%d", argPos))
+	whereClauses = append(whereClauses, fmt.Sprintf("timestamp <= %s", db.getPlaceholder(argPos)))
 	args = append(args, to)
 	argPos++
 
 	if len(nodeIDs) > 0 {
 		placeholders := make([]string, len(nodeIDs))
 		for i, nodeID := range nodeIDs {
-			placeholders[i] = fmt.Sprintf("$%d", argPos)
+			placeholders[i] = db.getPlaceholder(argPos)
 			args = append(args, nodeID)
 			argPos++
 		}
@@ -277,22 +267,52 @@ func (db *DB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.Time,
 	var results []models.AggregatedMeasurement
 	for rows.Next() {
 		var agg models.AggregatedMeasurement
-		err := rows.Scan(
-			&agg.Timestamp,
-			&agg.NodeID,
-			&agg.NodeName,
-			&agg.AvgDownloadMbps,
-			&agg.AvgUploadMbps,
-			&agg.AvgPingMs,
-			&agg.AvgJitterMs,
-			&agg.AvgPacketLoss,
-			&agg.MinDownloadMbps,
-			&agg.MaxDownloadMbps,
-			&agg.SampleCount,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan aggregated measurement: %w", err)
+
+		// SQLite returns time_bucket as string, PostgreSQL returns it as time.Time
+		if db.dbType == "sqlite" {
+			var timeBucketStr string
+			err := rows.Scan(
+				&timeBucketStr,
+				&agg.NodeID,
+				&agg.NodeName,
+				&agg.AvgDownloadMbps,
+				&agg.AvgUploadMbps,
+				&agg.AvgPingMs,
+				&agg.AvgJitterMs,
+				&agg.AvgPacketLoss,
+				&agg.MinDownloadMbps,
+				&agg.MaxDownloadMbps,
+				&agg.SampleCount,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("failed to scan aggregated measurement: %w", err)
+			}
+
+			// Parse the string timestamp
+			parsedTime, err := time.Parse("2006-01-02 15:04:05", timeBucketStr)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse time_bucket: %w", err)
+			}
+			agg.Timestamp = parsedTime
+		} else {
+			err := rows.Scan(
+				&agg.Timestamp,
+				&agg.NodeID,
+				&agg.NodeName,
+				&agg.AvgDownloadMbps,
+				&agg.AvgUploadMbps,
+				&agg.AvgPingMs,
+				&agg.AvgJitterMs,
+				&agg.AvgPacketLoss,
+				&agg.MinDownloadMbps,
+				&agg.MaxDownloadMbps,
+				&agg.SampleCount,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("failed to scan aggregated measurement: %w", err)
+			}
 		}
+
 		results = append(results, agg)
 	}
 
@@ -343,7 +363,8 @@ func (db *DB) GetLast24hStats() (*models.DashboardStats24h, error) {
 	past24h := time.Now().UTC().Add(-24 * time.Hour)
 
 	stats := &models.DashboardStats24h{}
-	err := db.QueryRowContext(ctx, `
+
+	query := fmt.Sprintf(`
 		SELECT
 			COALESCE(AVG(download_bandwidth) / 125000.0, 0) as avg_download_mbps,
 			COALESCE(AVG(upload_bandwidth) / 125000.0, 0) as avg_upload_mbps,
@@ -351,8 +372,10 @@ func (db *DB) GetLast24hStats() (*models.DashboardStats24h, error) {
 			COALESCE(AVG(ping_jitter), 0) as avg_jitter_ms,
 			COALESCE(AVG(packet_loss), 0) as avg_packet_loss
 		FROM measurements
-		WHERE timestamp >= $1
-	`, past24h).Scan(
+		WHERE timestamp >= %s
+	`, db.getPlaceholder(1))
+
+	err := db.QueryRowContext(ctx, query, past24h).Scan(
 		&stats.DownloadMbps,
 		&stats.UploadMbps,
 		&stats.PingMs,

@@ -9,7 +9,7 @@ A modern web application for visualizing network measurement data from multiple 
 - **Framework**: React 18+
 - **Build Tool**: Vite 5+
 - **Language**: TypeScript
-- **Styling**: TailwindCSS 3+
+- **Styling**: TailwindCSS 3+ with daisyUI 4+
 - **Charts**: Apache ECharts 5+
 - **Container**: Docker
 
@@ -26,14 +26,14 @@ A modern web application for visualizing network measurement data from multiple 
     "date-fns": "^3.3.1",
     "zustand": "^4.5.0",
     "react-hot-toast": "^2.4.1",
-    "@headlessui/react": "^1.7.18",
-    "@heroicons/react": "^2.1.1"
+    "lucide-react": "^0.316.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.55",
     "@types/react-dom": "^18.2.19",
     "@vitejs/plugin-react": "^4.2.1",
     "tailwindcss": "^3.4.1",
+    "daisyui": "^4.6.0",
     "postcss": "^8.4.35",
     "autoprefixer": "^10.4.17",
     "typescript": "^5.3.3",
@@ -42,48 +42,149 @@ A modern web application for visualizing network measurement data from multiple 
 }
 ```
 
+**Note**: We're using daisyUI for pre-built, customizable UI components on top of TailwindCSS. This provides:
+- Consistent design system with theme support
+- Ready-to-use components (buttons, cards, modals, badges, etc.)
+- Semantic class names
+- Built-in dark mode support
+- Reduced custom CSS
+
 ## Architecture
 
-### Components Structure
+### Modular Architecture
+The application is organized into feature modules, each containing its own components, hooks, types, and logic:
+
 ```
 src/
-├── components/
-│   ├── layout/
-│   │   ├── Header.tsx              # Top navigation bar
-│   │   ├── Sidebar.tsx             # Side navigation
-│   │   └── Layout.tsx              # Main layout wrapper
-│   ├── charts/
-│   │   ├── DownloadChart.tsx       # Download speed chart
-│   │   ├── UploadChart.tsx         # Upload speed chart
-│   │   ├── PingChart.tsx           # Ping/latency chart
-│   │   ├── JitterChart.tsx         # Jitter chart
-│   │   └── PacketLossChart.tsx     # Packet loss chart
-│   ├── nodes/
-│   │   ├── NodeCard.tsx            # Node status card
-│   │   ├── NodeList.tsx            # List of nodes
-│   │   ├── NodeDetails.tsx         # Detailed node view
-│   │   └── NodeStatusBadge.tsx     # Status indicator
-│   ├── api-keys/
-│   │   ├── APIKeyList.tsx          # List of API keys
-│   │   ├── APIKeyCard.tsx          # API key item
-│   │   ├── CreateAPIKeyModal.tsx   # Create new key modal
-│   │   └── APIKeyDialog.tsx        # Show generated key
-│   ├── auth/
-│   │   ├── LoginForm.tsx           # Login form
-│   │   └── ProtectedRoute.tsx      # Auth guard
-│   ├── common/
-│   │   ├── Button.tsx              # Reusable button
-│   │   ├── Input.tsx               # Reusable input
-│   │   ├── Card.tsx                # Reusable card
-│   │   ├── Badge.tsx               # Status badges
-│   │   ├── Modal.tsx               # Modal dialog
-│   │   ├── Table.tsx               # Data table
-│   │   ├── Spinner.tsx             # Loading spinner
-│   │   └── TimeRangeFilter.tsx     # Time filter component
-│   └── dashboard/
-│       ├── DashboardSummary.tsx    # Summary cards
-│       └── AllNodesCharts.tsx      # Combined charts view
+├── modules/
+│   ├── auth/                       # Authentication module
+│   │   ├── components/
+│   │   │   ├── LoginForm.tsx
+│   │   │   └── ProtectedRoute.tsx
+│   │   ├── hooks/
+│   │   │   └── useAuth.ts
+│   │   ├── store/
+│   │   │   └── authStore.ts
+│   │   ├── services/
+│   │   │   └── authService.ts
+│   │   └── types/
+│   │       └── auth.types.ts
+│   │
+│   ├── dashboard/                  # Dashboard module
+│   │   ├── components/
+│   │   │   ├── DashboardPage.tsx
+│   │   │   ├── SummaryCards.tsx
+│   │   │   ├── NodeFilter.tsx
+│   │   │   └── TimeRangeFilter.tsx
+│   │   ├── hooks/
+│   │   │   └── useDashboard.ts
+│   │   ├── services/
+│   │   │   └── dashboardService.ts
+│   │   └── types/
+│   │       └── dashboard.types.ts
+│   │
+│   ├── nodes/                      # Nodes module
+│   │   ├── components/
+│   │   │   ├── NodesPage.tsx
+│   │   │   ├── NodeDetailsPage.tsx
+│   │   │   ├── NodeCard.tsx
+│   │   │   ├── NodeList.tsx
+│   │   │   ├── NodeStatusBadge.tsx
+│   │   │   └── NodeStats.tsx
+│   │   ├── hooks/
+│   │   │   ├── useNodes.ts
+│   │   │   └── useNodeDetails.ts
+│   │   ├── store/
+│   │   │   └── nodesStore.ts
+│   │   ├── services/
+│   │   │   └── nodeService.ts
+│   │   └── types/
+│   │       └── node.types.ts
+│   │
+│   ├── api-keys/                   # API Keys module
+│   │   ├── components/
+│   │   │   ├── APIKeysPage.tsx
+│   │   │   ├── APIKeyList.tsx
+│   │   │   ├── APIKeyCard.tsx
+│   │   │   ├── CreateKeyModal.tsx
+│   │   │   └── KeyCreatedDialog.tsx
+│   │   ├── hooks/
+│   │   │   └── useAPIKeys.ts
+│   │   ├── services/
+│   │   │   └── apiKeyService.ts
+│   │   └── types/
+│   │       └── apiKey.types.ts
+│   │
+│   └── measurements/               # Measurements module
+│       ├── components/
+│       │   ├── charts/
+│       │   │   ├── BaseChart.tsx
+│       │   │   ├── DownloadChart.tsx
+│       │   │   ├── UploadChart.tsx
+│       │   │   ├── PingChart.tsx
+│       │   │   ├── JitterChart.tsx
+│       │   │   └── PacketLossChart.tsx
+│       │   └── MeasurementsTable.tsx
+│       ├── hooks/
+│       │   ├── useMeasurements.ts
+│       │   └── useChartData.ts
+│       ├── services/
+│       │   └── measurementService.ts
+│       ├── utils/
+│       │   ├── chartConfig.ts
+│       │   └── dataTransform.ts
+│       └── types/
+│           └── measurement.types.ts
+│
+├── shared/                         # Shared/Common components
+│   ├── components/
+│   │   ├── layout/
+│   │   │   ├── Layout.tsx
+│   │   │   ├── Header.tsx
+│   │   │   ├── Sidebar.tsx
+│   │   │   └── MainContent.tsx
+│   │   ├── ui/                     # Base UI components
+│   │   │   ├── Button.tsx
+│   │   │   ├── Card.tsx
+│   │   │   ├── Badge.tsx
+│   │   │   ├── Modal.tsx
+│   │   │   ├── Input.tsx
+│   │   │   ├── Select.tsx
+│   │   │   ├── Spinner.tsx
+│   │   │   ├── ErrorMessage.tsx
+│   │   │   └── EmptyState.tsx
+│   │   └── ErrorBoundary.tsx
+│   ├── hooks/
+│   │   ├── useAutoRefresh.ts
+│   │   ├── useDebounce.ts
+│   │   └── useLocalStorage.ts
+│   ├── utils/
+│   │   ├── format.ts
+│   │   ├── date.ts
+│   │   └── constants.ts
+│   └── types/
+│       └── common.types.ts
+│
+├── core/                           # Core application logic
+│   ├── api/
+│   │   ├── axiosConfig.ts
+│   │   └── interceptors.ts
+│   ├── config/
+│   │   └── env.ts
+│   └── router/
+│       └── routes.tsx
+│
+├── App.tsx
+├── main.tsx
+└── index.css
 ```
+
+### Module Design Principles
+1. **Feature-based organization**: Each module is self-contained with its own components, hooks, services, and types
+2. **Shared vs Module components**: Common UI components in `shared/`, feature-specific components in modules
+3. **Single responsibility**: Each component/hook/service has one clear purpose
+4. **Reusability**: Components are designed to be reusable with props
+5. **Type safety**: Strong TypeScript typing throughout
 
 ### State Management
 - **Zustand** for global state (auth, nodes, measurements)
@@ -663,9 +764,9 @@ const Dashboard = () => {
 // src/components/common/TimeRangeFilter.tsx
 const TimeRangeFilter = ({ value, onChange }) => {
   const ranges = [
-    { label: 'Last Day', value: 'day', hours: 24 },
-    { label: 'Last Week', value: 'week', hours: 168 },
-    { label: 'Last Month', value: 'month', hours: 720 },
+    { label: 'Last Day', value: 'day', hours: 24 },     // Uses 5m aggregation interval
+    { label: 'Last Week', value: 'week', hours: 168 },  // Uses 1h aggregation interval
+    { label: 'Last Month', value: 'month', hours: 720 }, // Uses 6h aggregation interval
   ];
 
   return (
@@ -711,7 +812,7 @@ const getTimeRange = (range: string) => {
 };
 ```
 
-## Styling with TailwindCSS
+## Styling with TailwindCSS & daisyUI
 
 ### Tailwind Config
 ```javascript
@@ -723,35 +824,118 @@ export default {
   ],
   theme: {
     extend: {
-      colors: {
-        primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          // ... more shades
-          900: '#1e3a8a',
-        },
-      },
+      // Custom extensions if needed
     },
   },
-  plugins: [],
+  plugins: [require("daisyui")],
+  daisyui: {
+    themes: [
+      {
+        light: {
+          "primary": "#3b82f6",
+          "secondary": "#64748b",
+          "accent": "#8b5cf6",
+          "neutral": "#1f2937",
+          "base-100": "#ffffff",
+          "info": "#0ea5e9",
+          "success": "#10b981",
+          "warning": "#f59e0b",
+          "error": "#ef4444",
+        },
+      },
+    ],
+    base: true,
+    styled: true,
+    utils: true,
+  },
 }
 ```
 
-### Common Styles
-```typescript
-// Status badge colors
-const statusColors = {
-  active: 'bg-green-100 text-green-800',
-  unreachable: 'bg-yellow-100 text-yellow-800',
-  inactive: 'bg-gray-100 text-gray-800',
-};
+### DaisyUI Components Usage
 
-// Button variants
-const buttonVariants = {
-  primary: 'bg-blue-600 hover:bg-blue-700 text-white',
-  secondary: 'bg-gray-200 hover:bg-gray-300 text-gray-700',
-  danger: 'bg-red-600 hover:bg-red-700 text-white',
-};
+#### Buttons
+```tsx
+// Primary button
+<button className="btn btn-primary">Submit</button>
+
+// Secondary button
+<button className="btn btn-secondary">Cancel</button>
+
+// Small button
+<button className="btn btn-sm">Small</button>
+
+// Loading button
+<button className="btn btn-primary">
+  <span className="loading loading-spinner"></span>
+  Loading
+</button>
+```
+
+#### Cards
+```tsx
+<div className="card bg-base-100 shadow-xl">
+  <div className="card-body">
+    <h2 className="card-title">Card Title</h2>
+    <p>Card content goes here</p>
+    <div className="card-actions justify-end">
+      <button className="btn btn-primary">Action</button>
+    </div>
+  </div>
+</div>
+```
+
+#### Badges
+```tsx
+<span className="badge badge-success">Active</span>
+<span className="badge badge-warning">Unreachable</span>
+<span className="badge badge-ghost">Inactive</span>
+```
+
+#### Modals
+```tsx
+<dialog id="my-modal" className="modal">
+  <div className="modal-box">
+    <h3 className="font-bold text-lg">Modal Title</h3>
+    <p className="py-4">Modal content</p>
+    <div className="modal-action">
+      <form method="dialog">
+        <button className="btn">Close</button>
+      </form>
+    </div>
+  </div>
+  <form method="dialog" className="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+```
+
+#### Stats
+```tsx
+<div className="stats shadow">
+  <div className="stat">
+    <div className="stat-title">Total Nodes</div>
+    <div className="stat-value">5</div>
+    <div className="stat-desc">All registered nodes</div>
+  </div>
+</div>
+```
+
+### Custom Component Styles
+```typescript
+// Status badge mappings
+export const statusBadgeClass = {
+  active: 'badge-success',
+  unreachable: 'badge-warning',
+  inactive: 'badge-ghost',
+} as const;
+
+// Button variant mappings (extending daisyUI)
+export const buttonVariants = {
+  primary: 'btn-primary',
+  secondary: 'btn-secondary',
+  danger: 'btn-error',
+  ghost: 'btn-ghost',
+} as const;
 ```
 
 ## Docker Setup
@@ -835,19 +1019,28 @@ frontend/
 ├── public/
 │   └── favicon.ico
 ├── src/
-│   ├── components/         # React components
-│   ├── pages/             # Page components
-│   ├── services/          # API services
-│   ├── store/             # Zustand stores
-│   ├── hooks/             # Custom hooks
-│   ├── lib/               # Utilities
-│   ├── types/             # TypeScript types
-│   ├── styles/            # Global styles
-│   ├── App.tsx            # Main app component
-│   ├── main.tsx           # Entry point
-│   └── router.tsx         # Route definitions
+│   ├── modules/                    # Feature modules
+│   │   ├── auth/
+│   │   ├── dashboard/
+│   │   ├── nodes/
+│   │   ├── api-keys/
+│   │   └── measurements/
+│   ├── shared/                     # Shared/common code
+│   │   ├── components/
+│   │   ├── hooks/
+│   │   ├── utils/
+│   │   └── types/
+│   ├── core/                       # Core application logic
+│   │   ├── api/
+│   │   ├── config/
+│   │   └── router/
+│   ├── App.tsx
+│   ├── main.tsx
+│   └── index.css
 ├── .env
 ├── .env.example
+├── .env.development
+├── .env.production
 ├── .gitignore
 ├── Dockerfile
 ├── docker-compose.yml
@@ -857,7 +1050,9 @@ frontend/
 ├── postcss.config.js
 ├── tailwind.config.js
 ├── tsconfig.json
+├── tsconfig.node.json
 ├── vite.config.ts
+├── SPECS.md
 └── README.md
 ```
 
@@ -1053,9 +1248,73 @@ For large measurement tables, use react-virtualized or react-window.
 - Verify useAutoRefresh hook
 - Check browser console for errors
 
+## Theme Support
+
+### Dark Mode
+The application supports both light and dark themes with a toggle switch in the header.
+
+**Features**:
+- Light and dark theme variants
+- Theme preference stored in localStorage
+- Smooth theme transitions
+- Theme toggle button in header/navbar
+- All components styled for both themes
+
+**Implementation**:
+```typescript
+// Theme stored in localStorage
+const theme = localStorage.getItem('theme') || 'light';
+
+// Applied to <html> element via data-theme attribute
+document.documentElement.setAttribute('data-theme', theme);
+
+// Toggle function
+const toggleTheme = () => {
+  const newTheme = theme === 'light' ? 'dark' : 'light';
+  setTheme(newTheme);
+  localStorage.setItem('theme', newTheme);
+  document.documentElement.setAttribute('data-theme', newTheme);
+};
+```
+
+**daisyUI Theme Configuration**:
+```javascript
+daisyui: {
+  themes: [
+    {
+      light: {
+        "primary": "#3b82f6",
+        "secondary": "#64748b",
+        "accent": "#8b5cf6",
+        "neutral": "#1f2937",
+        "base-100": "#ffffff",
+        "base-200": "#f3f4f6",
+        "base-300": "#e5e7eb",
+        "info": "#0ea5e9",
+        "success": "#10b981",
+        "warning": "#f59e0b",
+        "error": "#ef4444",
+      },
+      dark: {
+        "primary": "#60a5fa",
+        "secondary": "#94a3b8",
+        "accent": "#a78bfa",
+        "neutral": "#1f2937",
+        "base-100": "#1e293b",
+        "base-200": "#0f172a",
+        "base-300": "#020617",
+        "info": "#38bdf8",
+        "success": "#34d399",
+        "warning": "#fbbf24",
+        "error": "#f87171",
+      },
+    },
+  ],
+}
+```
+
 ## Future Enhancements
 
-- Dark mode
 - Export data (CSV, JSON, PDF reports)
 - Custom date range picker
 - Alert configuration UI

@@ -30,7 +30,7 @@ type Node struct {
 // NodeWithStats extends Node with statistical information
 type NodeWithStats struct {
 	Node
-	MeasurementCount  int64               `json:"measurement_count,omitempty"`
+	MeasurementCount  int64               `json:"total_measurements,omitempty"`
 	FailedTestCount   int64               `json:"failed_test_count,omitempty"`
 	LatestMeasurement *MeasurementSummary `json:"latest_measurement,omitempty"`
 	Statistics        *NodeStatistics     `json:"statistics,omitempty"`

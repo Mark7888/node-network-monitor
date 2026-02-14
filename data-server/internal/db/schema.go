@@ -30,6 +30,53 @@ func (db *DB) getNowSQL() string {
 	return "NOW()"
 }
 
+// getDateTruncSQL returns the SQL for date truncation based on database type and interval
+func (db *DB) getDateTruncSQL(interval string) string {
+	if db.dbType == "sqlite" {
+		// SQLite uses strftime for date truncation
+		switch interval {
+		case "5m":
+			// Truncate to 5-minute blocks
+			return "strftime('%Y-%m-%d %H:', timestamp) || printf('%02d:00', (CAST(strftime('%M', timestamp) AS INTEGER) / 5) * 5)"
+		case "15m":
+			// Truncate to 15-minute blocks
+			return "strftime('%Y-%m-%d %H:', timestamp) || printf('%02d:00', (CAST(strftime('%M', timestamp) AS INTEGER) / 15) * 15)"
+		case "1h":
+			return "strftime('%Y-%m-%d %H:00:00', timestamp)"
+		case "6h":
+			// Truncate to 6-hour blocks (00:00, 06:00, 12:00, 18:00)
+			return "strftime('%Y-%m-%d', timestamp) || ' ' || printf('%02d:00:00', (CAST(strftime('%H', timestamp) AS INTEGER) / 6) * 6)"
+		case "1d":
+			return "strftime('%Y-%m-%d 00:00:00', timestamp)"
+		default:
+			return "strftime('%Y-%m-%d %H:00:00', timestamp)"
+		}
+	}
+	// PostgreSQL uses date_trunc
+	switch interval {
+	case "5m":
+		return "date_trunc('hour', timestamp) + INTERVAL '5 min' * floor(EXTRACT(MINUTE FROM timestamp)::int / 5)"
+	case "15m":
+		return "date_trunc('hour', timestamp) + INTERVAL '15 min' * floor(EXTRACT(MINUTE FROM timestamp)::int / 15)"
+	case "1h":
+		return "date_trunc('hour', timestamp)"
+	case "6h":
+		return "date_trunc('hour', timestamp) - (EXTRACT(HOUR FROM timestamp)::int % 6) * INTERVAL '1 hour'"
+	case "1d":
+		return "date_trunc('day', timestamp)"
+	default:
+		return "date_trunc('hour', timestamp)"
+	}
+}
+
+// getPlaceholder returns the parameter placeholder for the given position
+func (db *DB) getPlaceholder(position int) string {
+	if db.dbType == "sqlite" {
+		return "?"
+	}
+	return fmt.Sprintf("$%d", position)
+}
+
 // getSQLForNodes returns the CREATE TABLE statement for nodes
 func getSQLForNodes(dbType string) string {
 	if dbType == "sqlite" {

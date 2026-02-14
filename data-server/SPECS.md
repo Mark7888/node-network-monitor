@@ -655,7 +655,7 @@ Query params:
 - `node_ids` (optional): Comma-separated node IDs (all if omitted)
 - `from` (required): Start timestamp (ISO8601)
 - `to` (required): End timestamp (ISO8601)
-- `interval` (required): Aggregation interval (1h, 6h, 1d)
+- `interval` (required): Aggregation interval (5m, 15m, 1h, 6h, 1d)
 
 Response (200):
 ```json

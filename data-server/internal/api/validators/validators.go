@@ -41,12 +41,14 @@ func ValidatePagination(page, limit int) (int, int, error) {
 // ValidateInterval checks if an interval string is valid
 func ValidateInterval(interval string) error {
 	validIntervals := map[string]bool{
-		"1h": true,
-		"6h": true,
-		"1d": true,
+		"5m":  true,
+		"15m": true,
+		"1h":  true,
+		"6h":  true,
+		"1d":  true,
 	}
 	if !validIntervals[interval] {
-		return fmt.Errorf("invalid interval, must be one of: 1h, 6h, 1d")
+		return fmt.Errorf("invalid interval, must be one of: 5m, 15m, 1h, 6h, 1d")
 	}
 	return nil
 }

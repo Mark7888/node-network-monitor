@@ -1,0 +1,75 @@
+import { EChartsOption } from 'echarts';
+import { CHART_COLORS } from '@/shared/utils/constants';
+import env from '@/core/config/env';
+
+/**
+ * Base chart configuration for ECharts
+ */
+export function getBaseChartConfig(): Partial<EChartsOption> {
+  return {
+    animation: env.enableChartAnimation,
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '10%',
+      containLabel: true,
+    },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'cross',
+        label: {
+          backgroundColor: '#6a7985',
+        },
+      },
+    },
+    legend: {
+      bottom: 0,
+      type: 'scroll',
+    },
+    xAxis: {
+      type: 'time',
+      axisLabel: {
+        hideOverlap: true,
+      },
+    },
+  };
+}
+
+/**
+ * Get color for a node (cycles through CHART_COLORS)
+ */
+export function getNodeColor(index: number): string {
+  return CHART_COLORS[index % CHART_COLORS.length];
+}
+
+/**
+ * Generate chart option for single metric
+ */
+export function generateChartOption(
+  title: string,
+  yAxisLabel: string,
+  series: any[],
+  formatter?: (value: number) => string
+): EChartsOption {
+  const baseConfig = getBaseChartConfig();
+  
+  return {
+    ...baseConfig,
+    title: {
+      text: title,
+      textStyle: {
+        fontSize: 16,
+        fontWeight: 600,
+      },
+    },
+    yAxis: {
+      type: 'value',
+      name: yAxisLabel,
+      axisLabel: {
+        formatter: formatter || undefined,
+      },
+    },
+    series,
+  } as EChartsOption;
+}

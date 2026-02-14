@@ -13,6 +13,7 @@ import (
 	"mark7888/speedtest-data-server/pkg/models"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -221,32 +222,82 @@ func (h *AdminHandler) HandleGetNodeMeasurements(c *gin.Context) {
 // HandleGetAggregatedMeasurements gets aggregated measurements for charting
 // GET /api/v1/admin/measurements/aggregate
 func (h *AdminHandler) HandleGetAggregatedMeasurements(c *gin.Context) {
-	var req models.AggregationRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
+	// Parse interval (required)
+	interval := c.Query("interval")
+	if interval == "" {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "Invalid query parameters",
+			Error: "interval parameter is required",
+		})
+		return
+	}
+
+	// Validate interval
+	if err := validators.ValidateInterval(interval); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: err.Error(),
+		})
+		return
+	}
+
+	// Parse from time (required)
+	fromStr := c.Query("from")
+	if fromStr == "" {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: "from parameter is required",
+		})
+		return
+	}
+	from, err := time.Parse(time.RFC3339, fromStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "Invalid from timestamp",
+			Details: err.Error(),
+		})
+		return
+	}
+
+	// Parse to time (required)
+	toStr := c.Query("to")
+	if toStr == "" {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: "to parameter is required",
+		})
+		return
+	}
+	to, err := time.Parse(time.RFC3339, toStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "Invalid to timestamp",
 			Details: err.Error(),
 		})
 		return
 	}
 
 	// Validate time range
-	if err := validators.ValidateTimeRange(&req.From, &req.To); err != nil {
+	if err := validators.ValidateTimeRange(&from, &to); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error: err.Error(),
 		})
 		return
 	}
 
-	// Validate interval
-	if err := validators.ValidateInterval(req.Interval); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error: err.Error(),
-		})
-		return
+	// Parse node_ids (optional, can be multiple)
+	var nodeIDs []uuid.UUID
+	if nodeIDStrs := c.QueryArray("node_ids"); len(nodeIDStrs) > 0 {
+		for _, idStr := range nodeIDStrs {
+			id, err := validators.ValidateUUID(idStr)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, models.ErrorResponse{
+					Error:   "Invalid node ID",
+					Details: err.Error(),
+				})
+				return
+			}
+			nodeIDs = append(nodeIDs, id)
+		}
 	}
 
-	measurements, err := h.db.GetAggregatedMeasurements(req.NodeIDs, req.From, req.To, req.Interval)
+	measurements, err := h.db.GetAggregatedMeasurements(nodeIDs, from, to, interval)
 	if err != nil {
 		logger.Log.Error("Failed to get aggregated measurements", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -257,7 +308,7 @@ func (h *AdminHandler) HandleGetAggregatedMeasurements(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.AggregationResponse{
 		Data:         measurements,
-		Interval:     req.Interval,
+		Interval:     interval,
 		TotalSamples: len(measurements),
 	})
 }
