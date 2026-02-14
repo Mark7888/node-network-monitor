@@ -16,8 +16,11 @@ import UploadChart from '@/modules/measurements/components/charts/UploadChart';
 import PingChart from '@/modules/measurements/components/charts/PingChart';
 import JitterChart from '@/modules/measurements/components/charts/JitterChart';
 import PacketLossChart from '@/modules/measurements/components/charts/PacketLossChart';
+import MeasurementsList from '@/modules/measurements/components/MeasurementsList';
 import { ArrowLeft } from 'lucide-react';
 import env from '@/core/config/env';
+
+type TabType = 'charts' | 'measurements';
 
 /**
  * Node details page component
@@ -25,6 +28,7 @@ import env from '@/core/config/env';
 export default function NodeDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const [timeRange, setTimeRange] = useState<TimeRange>('day');
+  const [activeTab, setActiveTab] = useState<TabType>('charts');
   
   // Memoize nodeIds array to prevent infinite re-renders
   const nodeIds = useMemo(() => id ? [id] : undefined, [id]);
@@ -36,7 +40,9 @@ export default function NodeDetailsPage() {
   // Auto-refresh
   useAutoRefresh(() => {
     refetchNode();
-    refetchMeasurements();
+    if (activeTab === 'charts') {
+      refetchMeasurements();
+    }
   }, env.refreshInterval);
 
   if (nodeLoading && !node) {
@@ -125,52 +131,78 @@ export default function NodeDetailsPage() {
         </div>
       </div>
 
-      {/* Time Range Filter */}
-      <div className="flex gap-2">
-        {TIME_RANGES.map((range) => (
-          <button
-            key={range.value}
-            onClick={() => setTimeRange(range.value)}
-            className={`btn ${
-              timeRange === range.value ? 'btn-primary' : 'btn-ghost'
-            }`}
-          >
-            {range.label}
-          </button>
-        ))}
+      {/* Tabs */}
+      <div className="tabs tabs-boxed bg-base-200 w-fit">
+        <button
+          className={`tab ${activeTab === 'charts' ? 'tab-active' : ''}`}
+          onClick={() => setActiveTab('charts')}
+        >
+          Charts
+        </button>
+        <button
+          className={`tab ${activeTab === 'measurements' ? 'tab-active' : ''}`}
+          onClick={() => setActiveTab('measurements')}
+        >
+          Measurements
+        </button>
       </div>
 
-      {/* Charts */}
-      {measurementsLoading && measurements.length === 0 ? (
-        <Spinner message="Loading charts..." />
-      ) : measurements.length === 0 ? (
-        <Card>
-          <div className="text-center py-8 text-base-content/60">
-            No measurement data available for the selected time range
+      {/* Charts Tab */}
+      {activeTab === 'charts' && (
+        <>
+          {/* Time Range Filter */}
+          <div className="flex gap-2">
+            {TIME_RANGES.map((range) => (
+              <button
+                key={range.value}
+                onClick={() => setTimeRange(range.value)}
+                className={`btn ${
+                  timeRange === range.value ? 'btn-primary' : 'btn-ghost'
+                }`}
+              >
+                {range.label}
+              </button>
+            ))}
           </div>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          <Card>
-            <DownloadChart data={chartData.downloadData} />
-          </Card>
 
-          <Card>
-            <UploadChart data={chartData.uploadData} />
-          </Card>
+          {/* Charts */}
+          {measurementsLoading && measurements.length === 0 ? (
+            <Spinner message="Loading charts..." />
+          ) : measurements.length === 0 ? (
+            <Card>
+              <div className="text-center py-8 text-base-content/60">
+                No measurement data available for the selected time range
+              </div>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              <Card>
+                <DownloadChart data={chartData.downloadData} />
+              </Card>
 
-          <Card>
-            <PingChart data={chartData.pingData} />
-          </Card>
+              <Card>
+                <UploadChart data={chartData.uploadData} />
+              </Card>
 
-          <Card>
-            <JitterChart data={chartData.jitterData} />
-          </Card>
+              <Card>
+                <PingChart data={chartData.pingData} />
+              </Card>
 
-          <Card>
-            <PacketLossChart data={chartData.packetLossData} />
-          </Card>
-        </div>
+              <Card>
+                <JitterChart data={chartData.jitterData} />
+              </Card>
+
+              <Card>
+                <PacketLossChart data={chartData.packetLossData} />
+              </Card>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Measurements List Tab */}
+      {activeTab === 'measurements' && id && (
+        <MeasurementsList nodeId={id} />
       )}
     </div>
   );

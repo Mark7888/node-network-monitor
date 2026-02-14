@@ -216,15 +216,15 @@ src/
 ```
 ┌──────────────────────────────────┐
 │     Network Speedtest Monitor    │
-│                                   │
+│                                  │
 │  ┌─────────────────────────────┐ │
-│  │ Username                     │ │
-│  │ [________________]           │ │
-│  │                              │ │
-│  │ Password                     │ │
-│  │ [________________]           │ │
-│  │                              │ │
-│  │       [  Login  ]            │ │
+│  │ Username                    │ │
+│  │ [________________]          │ │
+│  │                             │ │
+│  │ Password                    │ │
+│  │ [________________]          │ │
+│  │                             │ │
+│  │       [  Login  ]           │ │
 │  └─────────────────────────────┘ │
 └──────────────────────────────────┘
 ```
@@ -324,14 +324,22 @@ src/
 
 **Features**:
 - Node information (name, ID, status, first seen, last seen)
-- Time range filter
-- Charts specific to this node:
-  - Download speed
-  - Upload speed
-  - Ping/latency
-  - Jitter
-  - Packet loss
-- Measurements table (paginated)
+- Two tabs: Charts and Measurements
+- **Charts Tab**:
+  - Time range filter (Last Day / Last Week / Last Month)
+  - Charts specific to this node:
+    - Download speed
+    - Upload speed
+    - Ping/latency
+    - Jitter
+    - Packet loss
+- **Measurements Tab**:
+  - Paginated list of all measurements (50 per page)
+  - Shows all measurement details including:
+    - Main metrics (download, upload, ping, packet loss)
+    - Expandable detailed metrics (ping details, download/upload latency, network interface, server info, ISP)
+    - Link to speedtest result URL
+  - Lazy loading with pagination controls
 - Export data button (future)
 
 **Layout**:
@@ -346,13 +354,16 @@ src/
 │  ID: 550e8400-e29b-41d4-a716-446655440000               │
 │  First seen: Jan 1, 2026  |  Last seen: 2 min ago       │
 │                                                          │
-│  [Last Day] [Last Week] [Last Month]                    │
-│                                                          │
 │  Statistics                                              │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐  │
-│  │  95.2    │ │  89.7    │ │  1.2     │ │  0.08     │  │
-│  │  Mbps ↓  │ │  Mbps ↑  │ │  ms ping │ │  ms jitter│  │
+│  │  95.2    │ │  89.7    │ │  1.2     │ │  0.05     │  │
+│  │  Mbps ↓  │ │  Mbps ↑  │ │  ms ping │ │  % loss   │  │
 │  └──────────┘ └──────────┘ └──────────┘ └───────────┘  │
+│                                                          │
+│  [Charts] [Measurements]                                 │
+│                                                          │
+│  ─── Charts Tab ───                                      │
+│  [Last Day] [Last Week] [Last Month]                    │
 │                                                          │
 │  Download Speed (Mbps)                                   │
 │  ┌─────────────────────────────────────────────────┐    │
@@ -364,14 +375,21 @@ src/
 │  │        [Line chart with data points]            │    │
 │  └─────────────────────────────────────────────────┘    │
 │                                                          │
-│  Measurements History                                    │
+│  ─── OR Measurements Tab ───                             │
+│  Showing 1-50 of 4320 measurements                       │
 │  ┌─────────────────────────────────────────────────┐    │
-│  │ Timestamp       | Download | Upload | Ping      │    │
-│  │ Feb 14, 17:40   | 95.2 Mbps| 89.7  | 1.2 ms    │    │
-│  │ Feb 14, 17:30   | 93.8 Mbps| 88.2  | 1.3 ms    │    │
-│  │ ...                                              │    │
-│  │                           [1] [2] [3] ... [50] │    │
+│  │ Feb 14, 2026 17:40:00           [View Result →] │    │
+│  │ ID: 12345                                        │    │
+│  │ ↓ 95.2 Mbps  ↑ 89.7 Mbps  Ping: 1.2 ms  Loss: 0%│    │
+│  │ ▼ Show detailed metrics                          │    │
 │  └─────────────────────────────────────────────────┘    │
+│  ┌─────────────────────────────────────────────────┐    │
+│  │ Feb 14, 2026 17:30:00           [View Result →] │    │
+│  │ ID: 12344                                        │    │
+│  │ ↓ 93.8 Mbps  ↑ 88.2 Mbps  Ping: 1.3 ms  Loss: 0%│    │
+│  │ ▼ Show detailed metrics                          │    │
+│  └─────────────────────────────────────────────────┘    │
+│  [Previous] [1] [2] [3] ... [87] [Next]                 │
 │                                                          │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -1131,6 +1149,53 @@ const getCachedMeasurements = (key, fetchFn, ttl = 30000) => {
   return data;
 };
 ```
+
+### 5. Measurements List with Pagination
+The Node Details page includes a measurements list tab that displays all measurement details with lazy loading.
+
+**Hook**: `useNodeMeasurements`
+```typescript
+// src/modules/measurements/hooks/useNodeMeasurements.ts
+export function useNodeMeasurements(nodeId: string | undefined) {
+  // Returns measurements, pagination state, and navigation functions
+  const {
+    measurements,     // Current page of measurements
+    isLoading,
+    error,
+    total,           // Total count
+    page,            // Current page number
+    limit,           // Items per page (50)
+    totalPages,      // Calculated total pages
+    goToPage,        // Jump to specific page
+    nextPage,        // Navigate forward
+    prevPage,        // Navigate back
+    refetch,         // Reload current page
+  } = useNodeMeasurements(nodeId);
+}
+```
+
+**Component**: `MeasurementsList`
+```typescript
+// src/modules/measurements/components/MeasurementsList.tsx
+// Displays measurements in card format with:
+// - Main metrics (download, upload, ping, packet loss)
+// - Expandable detailed section with all fields:
+//   * Ping details (jitter, low, high)
+//   * Download/Upload details (bytes, elapsed, latency metrics)
+//   * Network interface info (IP, MAC, VPN status)
+//   * Server info (host, location, country)
+//   * ISP information
+// - Link to speedtest result URL
+// - Pagination controls at bottom
+```
+
+**Features**:
+- 50 measurements per page
+- Lazy loading (only fetches current page from API)
+- Expandable detail sections for each measurement
+- Color-coded packet loss (blue < 5%, red >= 5%)
+- Direct links to speedtest result URLs
+- Smart pagination (shows current page +/- 2 pages, plus first/last)
 
 ## Running the Application
 
