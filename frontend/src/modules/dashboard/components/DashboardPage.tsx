@@ -57,7 +57,9 @@ export default function DashboardPage() {
             <div className="stat">
               <div className="stat-title">Total Nodes</div>
               <div className="stat-value text-primary">{summary.total_nodes}</div>
-              <div className="stat-desc">{summary.active_nodes} active</div>
+              <div className="stat-desc">
+                {summary.active_nodes} active, {summary.unreachable_nodes} unreachable, {summary.inactive_nodes} inactive
+              </div>
             </div>
           </div>
 

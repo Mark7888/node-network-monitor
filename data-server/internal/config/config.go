@@ -120,7 +120,7 @@ func Load() (*Config, error) {
 
 	// Node
 	flag.DurationVar(&cfg.Node.AliveTimeout, "alive-timeout", getEnvDuration("ALIVE_TIMEOUT", 2*time.Minute), "Node alive signal timeout")
-	flag.DurationVar(&cfg.Node.InactiveTimeout, "inactive-timeout", getEnvDuration("INACTIVE_TIMEOUT", 24*time.Hour), "Node inactive timeout")
+	flag.DurationVar(&cfg.Node.InactiveTimeout, "inactive-timeout", getEnvDuration("INACTIVE_TIMEOUT", 1*time.Hour), "Node inactive timeout")
 	flag.DurationVar(&cfg.Node.StatusCheckInterval, "status-check-interval", getEnvDuration("STATUS_CHECK_INTERVAL", 30*time.Second), "Node status check interval")
 
 	// Retention

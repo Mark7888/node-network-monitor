@@ -317,7 +317,7 @@ func (h *AdminHandler) HandleGetAggregatedMeasurements(c *gin.Context) {
 // GET /api/v1/admin/dashboard
 func (h *AdminHandler) HandleGetDashboard(c *gin.Context) {
 	// Get node counts
-	totalNodes, activeNodes, unreachableNodes, err := h.db.GetNodeCounts()
+	totalNodes, activeNodes, unreachableNodes, inactiveNodes, err := h.db.GetNodeCounts()
 	if err != nil {
 		logger.Log.Error("Failed to get node counts", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -347,6 +347,7 @@ func (h *AdminHandler) HandleGetDashboard(c *gin.Context) {
 		TotalNodes:          totalNodes,
 		ActiveNodes:         activeNodes,
 		UnreachableNodes:    unreachableNodes,
+		InactiveNodes:       inactiveNodes,
 		TotalMeasurements:   totalMeasurements,
 		MeasurementsLast24h: last24h,
 		LastMeasurement:     lastTimestamp,

@@ -26,6 +26,7 @@ type DashboardSummary struct {
 	TotalNodes          int                `json:"total_nodes"`
 	ActiveNodes         int                `json:"active_nodes"`
 	UnreachableNodes    int                `json:"unreachable_nodes"`
+	InactiveNodes       int                `json:"inactive_nodes"`
 	TotalMeasurements   int64              `json:"total_measurements"`
 	MeasurementsLast24h int64              `json:"measurements_last_24h"`
 	LastMeasurement     *time.Time         `json:"last_measurement,omitempty"`

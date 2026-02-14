@@ -275,7 +275,7 @@ func (db *DB) UpdateNodeStatus(aliveTimeout, inactiveTimeout time.Duration) erro
 }
 
 // GetNodeCounts returns counts of nodes by status
-func (db *DB) GetNodeCounts() (total, active, unreachable int, err error) {
+func (db *DB) GetNodeCounts() (total, active, unreachable, inactive int, err error) {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
@@ -283,13 +283,14 @@ func (db *DB) GetNodeCounts() (total, active, unreachable int, err error) {
 		SELECT
 			COUNT(*) as total,
 			COUNT(*) FILTER (WHERE status = 'active') as active,
-			COUNT(*) FILTER (WHERE status = 'unreachable') as unreachable
+			COUNT(*) FILTER (WHERE status = 'unreachable') as unreachable,
+			COUNT(*) FILTER (WHERE status = 'inactive') as inactive
 		FROM nodes
-	`).Scan(&total, &active, &unreachable)
+	`).Scan(&total, &active, &unreachable, &inactive)
 
 	if err != nil {
-		return 0, 0, 0, fmt.Errorf("failed to get node counts: %w", err)
+		return 0, 0, 0, 0, fmt.Errorf("failed to get node counts: %w", err)
 	}
 
-	return total, active, unreachable, nil
+	return total, active, unreachable, inactive, nil
 }

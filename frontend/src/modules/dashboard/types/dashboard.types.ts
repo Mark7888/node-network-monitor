@@ -14,6 +14,7 @@ export interface DashboardSummary {
   total_nodes: number;
   active_nodes: number;
   unreachable_nodes: number;
+  inactive_nodes: number;
   total_measurements: number;
   measurements_last_24h: number;
   last_measurement?: string;

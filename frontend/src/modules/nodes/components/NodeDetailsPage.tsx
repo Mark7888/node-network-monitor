@@ -5,7 +5,7 @@ import { useMeasurements } from '@/modules/measurements/hooks/useMeasurements';
 import { useChartData } from '@/modules/measurements/hooks/useChartData';
 import { useAutoRefresh } from '@/shared/hooks/useAutoRefresh';
 import { TIME_RANGES, TimeRange } from '@/shared/utils/constants';
-import { formatSpeed, formatLatency } from '@/shared/utils/format';
+import { formatSpeed, formatLatency, formatPercent } from '@/shared/utils/format';
 import { formatTimestamp } from '@/shared/utils/date';
 import Card from '@/shared/components/ui/Card';
 import Badge from '@/shared/components/ui/Badge';
@@ -117,9 +117,9 @@ export default function NodeDetailsPage() {
 
         <div className="stats shadow bg-base-100">
           <div className="stat">
-            <div className="stat-title">Measurements</div>
-            <div className="stat-value text-primary text-2xl">
-              {node.total_measurements}
+            <div className="stat-title">Avg Packet Loss</div>
+            <div className={`stat-value text-2xl ${node.statistics.avg_packet_loss < 5 ? 'text-info' : 'text-error'}`}>
+              {formatPercent(node.statistics.avg_packet_loss)}
             </div>
           </div>
         </div>
