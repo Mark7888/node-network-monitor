@@ -10,6 +10,7 @@ import ErrorMessage from '@/shared/components/ui/ErrorMessage';
 import EmptyState from '@/shared/components/ui/EmptyState';
 import Modal from '@/shared/components/ui/Modal';
 import Input from '@/shared/components/ui/Input';
+import Select from '@/shared/components/ui/Select';
 import { Plus, Key, Trash2, Copy, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -24,6 +25,7 @@ export default function APIKeysPage() {
   const [createdKey, setCreatedKey] = useState<CreateAPIKeyResponse | null>(null);
   const [copiedKey, setCopiedKey] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'enabled' | 'disabled'>('all');
 
   useEffect(() => {
     fetchAPIKeys();
@@ -62,6 +64,13 @@ export default function APIKeysPage() {
     }
   };
 
+  // Filter API keys based on selected filter
+  const filteredApiKeys = apiKeys.filter((apiKey) => {
+    if (filter === 'enabled') return apiKey.enabled;
+    if (filter === 'disabled') return !apiKey.enabled;
+    return true; // 'all'
+  });
+
   if (isLoading && apiKeys.length === 0) {
     return <Spinner message="Loading API keys..." />;
   }
@@ -90,21 +99,44 @@ export default function APIKeysPage() {
         </Button>
       </div>
 
+      {/* Filter Dropdown */}
+      {apiKeys.length > 0 && (
+        <div className="flex justify-end">
+          <div className="w-48">
+            <Select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as 'all' | 'enabled' | 'disabled')}
+              className="select-sm"
+            >
+              <option value="all">All Keys</option>
+              <option value="enabled">Enabled Only</option>
+              <option value="disabled">Disabled Only</option>
+            </Select>
+          </div>
+        </div>
+      )}
+
       {/* API Keys List */}
-      {apiKeys.length === 0 ? (
+      {filteredApiKeys.length === 0 ? (
         <EmptyState
-          title="No API keys found"
-          message="Create an API key to allow speedtest nodes to authenticate and submit measurements."
+          title={apiKeys.length === 0 ? "No API keys found" : `No ${filter} API keys found`}
+          message={
+            apiKeys.length === 0
+              ? "Create an API key to allow speedtest nodes to authenticate and submit measurements."
+              : `There are no ${filter} API keys. Try changing the filter or ${filter === 'enabled' ? 'enable some keys' : 'disable some keys'}.`
+          }
           icon={<Key size={64} />}
           action={
-            <Button onClick={() => setIsCreateModalOpen(true)} variant="primary">
-              Create First API Key
-            </Button>
+            apiKeys.length === 0 ? (
+              <Button onClick={() => setIsCreateModalOpen(true)} variant="primary">
+                Create First API Key
+              </Button>
+            ) : undefined
           }
         />
       ) : (
         <div className="space-y-4">
-          {apiKeys.map((apiKey) => (
+          {filteredApiKeys.map((apiKey) => (
             <Card key={apiKey.id} compact>
               <div className="flex justify-between items-start">
                 <div className="flex-1">
