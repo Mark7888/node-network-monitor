@@ -9,9 +9,10 @@ import (
 
 // Config represents logger configuration
 type Config struct {
-	Level  string // debug, info, warn, error
-	Format string // json, console
-	Output string // file path or empty for stdout
+	Level         string // debug, info, warn, error
+	Format        string // json, console
+	Output        string // file path or empty for stdout
+	OutputConsole bool   // also output to console when writing to file
 }
 
 // New creates a new zap logger with the given configuration
@@ -43,7 +44,12 @@ func New(cfg Config) (*zap.Logger, error) {
 		if err != nil {
 			return nil, err
 		}
-		writeSyncer = zapcore.AddSync(file)
+		// If OutputConsole is true, write to both file and console
+		if cfg.OutputConsole {
+			writeSyncer = zapcore.NewMultiWriteSyncer(zapcore.AddSync(file), zapcore.AddSync(os.Stdout))
+		} else {
+			writeSyncer = zapcore.AddSync(file)
+		}
 	} else {
 		writeSyncer = zapcore.AddSync(os.Stdout)
 	}

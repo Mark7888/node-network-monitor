@@ -33,9 +33,10 @@ func main() {
 
 	// Initialize logger
 	log, err := logger.New(logger.Config{
-		Level:  cfg.LogLevel,
-		Format: cfg.LogFormat,
-		Output: cfg.LogOutput,
+		Level:         cfg.LogLevel,
+		Format:        cfg.LogFormat,
+		Output:        cfg.LogOutput,
+		OutputConsole: cfg.LogOutputConsole,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)

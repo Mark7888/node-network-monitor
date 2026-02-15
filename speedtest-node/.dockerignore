@@ -1,11 +1,41 @@
+# Git
 .git
 .gitignore
+
+# Documentation
 README.md
+*.md
+
+# Environment files
 .env
 .env.*
 !.env.example
-data/
-logs/
-speedtest-node
+
+# Database files
 *.db
+*.sqlite
+
+# Logs
+logs/
 *.log
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Build artifacts
+speedtest-node
+*.exe
+*.test
+
+# OS files
+.DS_Store
+Thumbs.db

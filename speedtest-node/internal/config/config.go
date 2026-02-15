@@ -37,9 +37,10 @@ type Config struct {
 	RetentionDays int
 
 	// Logging configuration
-	LogLevel  string
-	LogFormat string
-	LogOutput string
+	LogLevel         string
+	LogFormat        string
+	LogOutput        string
+	LogOutputConsole bool
 }
 
 // Load loads configuration from command-line arguments and environment variables
@@ -73,6 +74,7 @@ func Load() *Config {
 	pflag.String("log-level", "info", "Log level: debug, info, warn, error")
 	pflag.String("log-format", "json", "Log format: json or console")
 	pflag.String("log-output", "./logs/speedtest-node.log", "Log file path")
+	pflag.Bool("log-output-console", false, "Also output logs to console")
 
 	// Add version and help flags
 	pflag.BoolP("version", "v", false, "Print version information")
@@ -124,6 +126,7 @@ func Load() *Config {
 	v.BindEnv("log-level", "SPEEDTEST_LOG_LEVEL")
 	v.BindEnv("log-format", "SPEEDTEST_LOG_FORMAT")
 	v.BindEnv("log-output", "SPEEDTEST_LOG_OUTPUT")
+	v.BindEnv("log-output-console", "SPEEDTEST_LOG_OUTPUT_CONSOLE")
 
 	// Build config from viper
 	cfg := &Config{
@@ -143,6 +146,7 @@ func Load() *Config {
 		LogLevel:         v.GetString("log-level"),
 		LogFormat:        v.GetString("log-format"),
 		LogOutput:        v.GetString("log-output"),
+		LogOutputConsole: v.GetBool("log-output-console"),
 	}
 
 	return cfg
