@@ -1,17 +1,9 @@
-version: '3.8'
-
 services:
-  frontend:
+  speedtest-frontend:
     build: .
     container_name: speedtest-frontend
     restart: unless-stopped
     ports:
-      - "3000:80"
-    environment:
-      - VITE_API_URL=${API_URL:-http://localhost:8080}
-    networks:
-      - speedtest-network
-
-networks:
-  speedtest-network:
-    driver: bridge
+      - "3000:3000"
+    env_file:
+      - .env.production

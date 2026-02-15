@@ -13,7 +13,7 @@ interface UploadChartProps {
 export default function UploadChart({ data, height }: UploadChartProps) {
   const series = data.map((nodeSeries, index) => ({
     name: nodeSeries.node_name,
-    type: 'line',
+    type: 'line' as const,
     smooth: true,
     data: nodeSeries.data.map((point) => [
       point.timestamp,
