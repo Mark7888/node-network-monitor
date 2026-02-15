@@ -79,9 +79,10 @@ type APIConfig struct {
 
 // LoggingConfig holds logging configuration
 type LoggingConfig struct {
-	Level  string
-	Format string
-	Output string
+	Level         string
+	Format        string
+	Output        string
+	OutputConsole bool
 }
 
 // Load loads configuration from command-line arguments and environment variables
@@ -136,6 +137,7 @@ func Load() (*Config, error) {
 	flag.StringVar(&cfg.Logging.Level, "log-level", getEnv("LOG_LEVEL", "info"), "Log level: debug, info, warn, error")
 	flag.StringVar(&cfg.Logging.Format, "log-format", getEnv("LOG_FORMAT", "json"), "Log format: json or console")
 	flag.StringVar(&cfg.Logging.Output, "log-output", getEnv("LOG_OUTPUT", "./logs/data-server.log"), "Log file path")
+	flag.BoolVar(&cfg.Logging.OutputConsole, "log-output-console", getEnvBool("LOG_OUTPUT_CONSOLE", false), "Also output logs to console")
 
 	flag.Parse()
 

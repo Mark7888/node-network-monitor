@@ -28,7 +28,7 @@ func main() {
 	}
 
 	// Initialize logger
-	if err := logger.Initialize(cfg.Logging.Level, cfg.Logging.Format, cfg.Logging.Output); err != nil {
+	if err := logger.Initialize(cfg.Logging.Level, cfg.Logging.Format, cfg.Logging.Output, cfg.Logging.OutputConsole); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
 		os.Exit(1)
 	}

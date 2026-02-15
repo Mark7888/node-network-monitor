@@ -11,7 +11,7 @@ import (
 var Log *zap.Logger
 
 // Initialize sets up the logger based on configuration
-func Initialize(level, format, output string) error {
+func Initialize(level, format, output string, outputConsole bool) error {
 	// Parse log level
 	var zapLevel zapcore.Level
 	switch level {
@@ -58,10 +58,12 @@ func Initialize(level, format, output string) error {
 		}
 
 		// Write to both file and stdout
-		writeSyncer = zapcore.NewMultiWriteSyncer(
-			zapcore.AddSync(file),
-			zapcore.AddSync(os.Stdout),
-		)
+		var writers []zapcore.WriteSyncer
+		writers = append(writers, zapcore.AddSync(file))
+		if outputConsole {
+			writers = append(writers, zapcore.AddSync(os.Stdout))
+		}
+		writeSyncer = zapcore.NewMultiWriteSyncer(writers...)
 	}
 
 	// Create core and logger

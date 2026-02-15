@@ -12,7 +12,7 @@ RUN go mod download
 COPY . .
 
 # Build application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o data-server ./cmd/data-server
+RUN CGO_ENABLED=1 GOOS=linux go build -o data-server ./cmd/data-server
 
 # Final stage
 FROM alpine:latest

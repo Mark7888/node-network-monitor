@@ -18,6 +18,7 @@ logs/
 # Docker files
 Dockerfile
 docker-compose.yml
+docker-compose.*.yml
 .dockerignore
 
 # IDE
