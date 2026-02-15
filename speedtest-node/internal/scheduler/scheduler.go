@@ -149,7 +149,7 @@ func (s *Scheduler) syncMeasurements() {
 	s.logger.Debug("Found unsent measurements", zap.Int("count", len(measurements)))
 
 	if err := s.sender.SendMeasurements(measurements); err != nil {
-		s.logger.Error("Failed to sync measurements", zap.Error(err))
+		s.logger.Warn("Failed to sync measurements", zap.Error(err))
 		return
 	}
 
