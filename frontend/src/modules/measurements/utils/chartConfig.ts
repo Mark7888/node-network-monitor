@@ -44,6 +44,40 @@ export function getNodeColor(index: number): string {
 }
 
 /**
+ * Group consecutive failed timestamps into ranges
+ */
+function groupConsecutiveFailures(timestamps: string[]): Array<[string, string]> {
+  if (!timestamps || timestamps.length === 0) return [];
+  
+  // Sort timestamps
+  const sorted = [...timestamps].sort();
+  const groups: Array<[string, string]> = [];
+  
+  let rangeStart = sorted[0];
+  let rangeEnd = sorted[0];
+  
+  for (let i = 1; i < sorted.length; i++) {
+    const current = new Date(sorted[i]).getTime();
+    const previous = new Date(sorted[i - 1]).getTime();
+    
+    // If timestamps are within 15 minutes (900000ms), consider them consecutive
+    if (current - previous <= 900000) {
+      rangeEnd = sorted[i];
+    } else {
+      // Save the current range and start a new one
+      groups.push([rangeStart, rangeEnd]);
+      rangeStart = sorted[i];
+      rangeEnd = sorted[i];
+    }
+  }
+  
+  // Add the last range
+  groups.push([rangeStart, rangeEnd]);
+  
+  return groups;
+}
+
+/**
  * Generate chart option for single metric
  */
 export function generateChartOption(
@@ -55,27 +89,37 @@ export function generateChartOption(
 ): EChartsOption {
   const baseConfig = getBaseChartConfig();
   
-  // Create markLine data for failed measurements
-  const markLineData = failedTimestamps?.map(timestamp => ({
-    xAxis: timestamp,
-    lineStyle: {
-      color: 'rgba(239, 68, 68, 0.35)', // Tailwind red-500 with lower opacity
-      type: 'solid' as const,
-      width: 2,
-    },
-    label: {
-      show: false, // Hide labels to avoid clutter
-    },
-  })) || [];
+  // Group consecutive failures into ranges
+  const failureRanges = failedTimestamps ? groupConsecutiveFailures(failedTimestamps) : [];
+  
+  // Create markArea data for failed measurement ranges
+  const markAreaData = failureRanges.map(([start, end]) => {
+    const startTime = new Date(start).getTime();
+    const endTime = new Date(end).getTime();
+    
+    // If it's a single point (or very close), add some width for visibility (5 minutes on each side)
+    const padding = startTime === endTime ? 300000 : 0; // 5 minutes in ms
+    
+    return [
+      {
+        xAxis: new Date(startTime - padding).toISOString(),
+        itemStyle: {
+          color: 'rgba(239, 68, 68, 0.15)', // Tailwind red-500 with low opacity for background
+        },
+      },
+      {
+        xAxis: new Date(endTime + padding).toISOString(),
+      }
+    ];
+  });
 
-  // Add markLine to each series if there are failed timestamps
+  // Add markArea to each series if there are failed timestamps
   const enhancedSeries = Array.isArray(series) 
     ? series.map((s: any) => ({
         ...s,
-        markLine: failedTimestamps && failedTimestamps.length > 0 ? {
+        markArea: failedTimestamps && failedTimestamps.length > 0 ? {
           silent: true,
-          symbol: 'none', // No symbols at the ends
-          data: markLineData,
+          data: markAreaData,
           animation: false, // Disable animation for better performance
         } : undefined,
       }))
