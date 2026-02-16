@@ -50,9 +50,36 @@ export function generateChartOption(
   title: string,
   yAxisLabel: string,
   series: EChartsOption['series'],
-  formatter?: (value: number) => string
+  formatter?: (value: number) => string,
+  failedTimestamps?: string[]
 ): EChartsOption {
   const baseConfig = getBaseChartConfig();
+  
+  // Create markLine data for failed measurements
+  const markLineData = failedTimestamps?.map(timestamp => ({
+    xAxis: timestamp,
+    lineStyle: {
+      color: 'rgba(239, 68, 68, 0.35)', // Tailwind red-500 with lower opacity
+      type: 'solid' as const,
+      width: 2,
+    },
+    label: {
+      show: false, // Hide labels to avoid clutter
+    },
+  })) || [];
+
+  // Add markLine to each series if there are failed timestamps
+  const enhancedSeries = Array.isArray(series) 
+    ? series.map((s: any) => ({
+        ...s,
+        markLine: failedTimestamps && failedTimestamps.length > 0 ? {
+          silent: true,
+          symbol: 'none', // No symbols at the ends
+          data: markLineData,
+          animation: false, // Disable animation for better performance
+        } : undefined,
+      }))
+    : series;
   
   return {
     ...baseConfig,
@@ -70,6 +97,6 @@ export function generateChartOption(
         formatter: formatter || undefined,
       },
     },
-    series,
+    series: enhancedSeries,
   } as EChartsOption;
 }

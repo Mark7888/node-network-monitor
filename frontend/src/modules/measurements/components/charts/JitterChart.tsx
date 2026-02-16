@@ -5,12 +5,13 @@ import { generateChartOption, getNodeColor } from '../../utils/chartConfig';
 interface JitterChartProps {
   data: ChartSeries[];
   height?: number | string;
+  failedTimestamps?: string[];
 }
 
 /**
  * Jitter chart component
  */
-export default function JitterChart({ data, height }: JitterChartProps) {
+export default function JitterChart({ data, height, failedTimestamps }: JitterChartProps) {
   const series = data.map((nodeSeries, index) => ({
     name: nodeSeries.node_name,
     type: 'line' as const,
@@ -28,7 +29,8 @@ export default function JitterChart({ data, height }: JitterChartProps) {
     'Jitter',
     'ms',
     series,
-    (value: number) => `${value} ms`
+    (value: number) => `${value} ms`,
+    failedTimestamps
   );
 
   return <BaseChart option={option} height={height} />;

@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useNodeDetails } from '../hooks/useNodeDetails';
 import { useMeasurements } from '@/modules/measurements/hooks/useMeasurements';
 import { useChartData } from '@/modules/measurements/hooks/useChartData';
+import { useFailedMeasurements } from '@/modules/measurements/hooks/useFailedMeasurements';
 import { useAutoRefresh } from '@/shared/hooks/useAutoRefresh';
 import { TIME_RANGES, TimeRange } from '@/shared/utils/constants';
 import { formatSpeed, formatLatency, formatPercent } from '@/shared/utils/format';
@@ -35,6 +36,7 @@ export default function NodeDetailsPage() {
   
   const { node, isLoading: nodeLoading, error: nodeError, refetch: refetchNode } = useNodeDetails(id!);
   const { data: measurements, isLoading: measurementsLoading, refetch: refetchMeasurements } = useMeasurements(timeRange, nodeIds);
+  const { failedTimestamps, refetch: refetchFailedMeasurements } = useFailedMeasurements(timeRange, id);
   const chartData = useChartData(measurements);
 
   // Auto-refresh
@@ -42,6 +44,7 @@ export default function NodeDetailsPage() {
     refetchNode();
     if (activeTab === 'charts') {
       refetchMeasurements();
+      refetchFailedMeasurements();
     }
   }, env.refreshInterval);
 
@@ -193,23 +196,23 @@ export default function NodeDetailsPage() {
           ) : (
             <div className="space-y-6">
               <Card>
-                <DownloadChart data={chartData.downloadData} />
+                <DownloadChart data={chartData.downloadData} failedTimestamps={failedTimestamps} />
               </Card>
 
               <Card>
-                <UploadChart data={chartData.uploadData} />
+                <UploadChart data={chartData.uploadData} failedTimestamps={failedTimestamps} />
               </Card>
 
               <Card>
-                <PingChart data={chartData.pingData} />
+                <PingChart data={chartData.pingData} failedTimestamps={failedTimestamps} />
               </Card>
 
               <Card>
-                <JitterChart data={chartData.jitterData} />
+                <JitterChart data={chartData.jitterData} failedTimestamps={failedTimestamps} />
               </Card>
 
               <Card>
-                <PacketLossChart data={chartData.packetLossData} />
+                <PacketLossChart data={chartData.packetLossData} failedTimestamps={failedTimestamps} />
               </Card>
             </div>
           )}

@@ -5,12 +5,13 @@ import { generateChartOption, getNodeColor } from '../../utils/chartConfig';
 interface UploadChartProps {
   data: ChartSeries[];
   height?: number | string;
+  failedTimestamps?: string[];
 }
 
 /**
  * Upload speed chart component
  */
-export default function UploadChart({ data, height }: UploadChartProps) {
+export default function UploadChart({ data, height, failedTimestamps }: UploadChartProps) {
   const series = data.map((nodeSeries, index) => ({
     name: nodeSeries.node_name,
     type: 'line' as const,
@@ -28,7 +29,8 @@ export default function UploadChart({ data, height }: UploadChartProps) {
     'Upload Speed',
     'Mbps',
     series,
-    (value: number) => `${value} Mbps`
+    (value: number) => `${value} Mbps`,
+    failedTimestamps
   );
 
   return <BaseChart option={option} height={height} />;

@@ -5,12 +5,13 @@ import { generateChartOption, getNodeColor } from '../../utils/chartConfig';
 interface DownloadChartProps {
   data: ChartSeries[];
   height?: number | string;
+  failedTimestamps?: string[];
 }
 
 /**
  * Download speed chart component
  */
-export default function DownloadChart({ data, height }: DownloadChartProps) {
+export default function DownloadChart({ data, height, failedTimestamps }: DownloadChartProps) {
   const series = data.map((nodeSeries, index) => ({
     name: nodeSeries.node_name,
     type: 'line' as const,
@@ -28,7 +29,8 @@ export default function DownloadChart({ data, height }: DownloadChartProps) {
     'Download Speed',
     'Mbps',
     series,
-    (value: number) => `${value} Mbps`
+    (value: number) => `${value} Mbps`,
+    failedTimestamps
   );
 
   return <BaseChart option={option} height={height} />;

@@ -5,12 +5,13 @@ import { generateChartOption, getNodeColor } from '../../utils/chartConfig';
 interface PacketLossChartProps {
   data: ChartSeries[];
   height?: number | string;
+  failedTimestamps?: string[];
 }
 
 /**
  * Packet loss chart component
  */
-export default function PacketLossChart({ data, height }: PacketLossChartProps) {
+export default function PacketLossChart({ data, height, failedTimestamps }: PacketLossChartProps) {
   const series = data.map((nodeSeries, index) => ({
     name: nodeSeries.node_name,
     type: 'line' as const,
@@ -28,7 +29,8 @@ export default function PacketLossChart({ data, height }: PacketLossChartProps) 
     'Packet Loss',
     '%',
     series,
-    (value: number) => `${value}%`
+    (value: number) => `${value}%`,
+    failedTimestamps
   );
 
   return <BaseChart option={option} height={height} />;

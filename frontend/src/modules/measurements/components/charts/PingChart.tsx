@@ -5,12 +5,13 @@ import { generateChartOption, getNodeColor } from '../../utils/chartConfig';
 interface PingChartProps {
   data: ChartSeries[];
   height?: number | string;
+  failedTimestamps?: string[];
 }
 
 /**
  * Ping/latency chart component
  */
-export default function PingChart({ data, height }: PingChartProps) {
+export default function PingChart({ data, height, failedTimestamps }: PingChartProps) {
   const series = data.map((nodeSeries, index) => ({
     name: nodeSeries.node_name,
     type: 'line' as const,
@@ -28,7 +29,8 @@ export default function PingChart({ data, height }: PingChartProps) {
     'Ping / Latency',
     'ms',
     series,
-    (value: number) => `${value} ms`
+    (value: number) => `${value} ms`,
+    failedTimestamps
   );
 
   return <BaseChart option={option} height={height} />;
