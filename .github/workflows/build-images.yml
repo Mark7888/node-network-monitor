@@ -1,0 +1,68 @@
+name: Build Docker Images
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build-data-server:
+    name: Build Data Server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Data Server Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./data-server
+          file: ./data-server/Dockerfile
+          push: false
+          tags: mark7888/network-monitor-data-server:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Frontend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: false
+          tags: mark7888/network-monitor-ui:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-speedtest-node:
+    name: Build Speedtest Node
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Speedtest Node Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./speedtest-node
+          file: ./speedtest-node/Dockerfile
+          push: false
+          tags: mark7888/network-monitor-node:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
