@@ -43,6 +43,9 @@ type NodeStatistics struct {
 	AvgPingMs       float64 `json:"avg_ping_ms"`
 	AvgJitterMs     float64 `json:"avg_jitter_ms"`
 	AvgPacketLoss   float64 `json:"avg_packet_loss"`
+	SuccessRate24h  float64 `json:"success_rate_24h"`  // Success rate for last 24 hours (0-100)
+	SuccessCount24h int64   `json:"success_count_24h"` // Successful measurements in last 24h
+	FailedCount24h  int64   `json:"failed_count_24h"`  // Failed measurements in last 24h
 }
 
 // MeasurementSummary provides a brief summary of a measurement

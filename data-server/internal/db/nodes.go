@@ -195,9 +195,31 @@ func (db *DB) GetNodeWithStats(nodeID uuid.UUID) (*models.NodeWithStats, error) 
 	)
 	if err != nil {
 		logger.Log.Warn("Failed to get node statistics", zap.Error(err))
-	} else {
-		nodeWithStats.Statistics = stats
 	}
+
+	// Get success rate for last 24 hours
+	past24h := time.Now().UTC().Add(-24 * time.Hour)
+	err = db.QueryRowContext(ctx, `
+		SELECT
+			(SELECT COUNT(*) FROM measurements WHERE node_id = $1 AND timestamp >= $2) as success_count,
+			(SELECT COUNT(*) FROM failed_measurements WHERE node_id = $1 AND timestamp >= $2) as failed_count
+	`, nodeID, past24h).Scan(
+		&stats.SuccessCount24h,
+		&stats.FailedCount24h,
+	)
+	if err != nil {
+		logger.Log.Warn("Failed to get 24h measurement counts", zap.Error(err))
+	} else {
+		// Calculate success rate
+		totalCount := stats.SuccessCount24h + stats.FailedCount24h
+		if totalCount > 0 {
+			stats.SuccessRate24h = (float64(stats.SuccessCount24h) / float64(totalCount)) * 100
+		} else {
+			stats.SuccessRate24h = 0
+		}
+	}
+
+	nodeWithStats.Statistics = stats
 
 	// Get latest measurement
 	latestMeasurement := &models.MeasurementSummary{}

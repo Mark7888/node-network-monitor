@@ -53,6 +53,10 @@ export interface Measurement {
   // Result info
   result_id?: string;
   result_url?: string;
+
+  // Failed measurement info
+  is_failed: boolean;
+  error_message?: string;
 }
 
 export interface MeasurementStats {
@@ -101,4 +105,5 @@ export interface MeasurementQueryParams {
   page?: number;
   limit?: number;
   offset?: number;
+  status?: 'all' | 'successful' | 'failed';  // Filter by measurement status
 }

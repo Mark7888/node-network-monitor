@@ -93,7 +93,7 @@ export default function NodeDetailsPage() {
       </Card>
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="stats shadow bg-base-100">
           <div className="stat">
             <div className="stat-title">Avg Download</div>
@@ -126,6 +126,22 @@ export default function NodeDetailsPage() {
             <div className="stat-title">Avg Packet Loss</div>
             <div className={`stat-value text-2xl ${node.statistics.avg_packet_loss < 5 ? 'text-info' : 'text-error'}`}>
               {formatPercent(node.statistics.avg_packet_loss)}
+            </div>
+          </div>
+        </div>
+
+        <div className="stats shadow bg-base-100">
+          <div className="stat">
+            <div className="stat-title">Success Rate (24h)</div>
+            <div className={`stat-value text-2xl ${
+              node.statistics.success_rate_24h >= 80 ? 'text-success' : 
+              node.statistics.success_rate_24h >= 50 ? 'text-warning' : 
+              'text-error'
+            }`}>
+              {node.statistics.success_rate_24h.toFixed(1)}%
+            </div>
+            <div className="stat-desc">
+              {node.statistics.success_count_24h} succeeded, {node.statistics.failed_count_24h} failed
             </div>
           </div>
         </div>

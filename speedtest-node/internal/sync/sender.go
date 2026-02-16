@@ -42,7 +42,7 @@ func (s *Sender) SendMeasurements(measurements []*models.Measurement) error {
 
 	respData, err := s.client.Post("/api/v1/measurements", request)
 	if err != nil {
-		s.logger.Error("Failed to send measurements", zap.Error(err))
+		s.logger.Warn("Failed to send measurements", zap.Error(err))
 		return err
 	}
 

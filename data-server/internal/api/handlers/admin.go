@@ -189,6 +189,15 @@ func (h *AdminHandler) HandleGetNodeMeasurements(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "1000"))
 	page, limit, _ = validators.ValidatePagination(page, limit)
 
+	// Parse status filter (all, successful, failed)
+	status := c.DefaultQuery("status", "all")
+	if status != "all" && status != "successful" && status != "failed" {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: "Invalid status parameter. Must be: all, successful, or failed",
+		})
+		return
+	}
+
 	// Parse time filters
 	var from, to *time.Time
 	if fromStr := c.Query("from"); fromStr != "" {
@@ -202,7 +211,7 @@ func (h *AdminHandler) HandleGetNodeMeasurements(c *gin.Context) {
 		}
 	}
 
-	measurements, total, err := h.db.GetMeasurementsByNode(nodeID, from, to, page, limit)
+	measurements, total, err := h.db.GetMeasurementsByNode(nodeID, from, to, page, limit, status)
 	if err != nil {
 		logger.Log.Error("Failed to get measurements", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{

@@ -4,9 +4,9 @@ import { Measurement } from '../types/measurement.types';
 import toast from 'react-hot-toast';
 
 /**
- * Hook for fetching node measurements with pagination
+ * Hook for fetching node measurements with pagination and filtering
  */
-export function useNodeMeasurements(nodeId: string | undefined) {
+export function useNodeMeasurements(nodeId: string | undefined, status: 'all' | 'successful' | 'failed' = 'all') {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +24,7 @@ export function useNodeMeasurements(nodeId: string | undefined) {
       const response = await getNodeMeasurements(nodeId, {
         page: currentPage,
         limit,
+        status,
       });
 
       setMeasurements(response.measurements || []);
@@ -36,7 +37,7 @@ export function useNodeMeasurements(nodeId: string | undefined) {
     } finally {
       setIsLoading(false);
     }
-  }, [nodeId, limit]);
+  }, [nodeId, limit, status]);
 
   useEffect(() => {
     fetchData(page);

@@ -1,19 +1,25 @@
+import { useState } from 'react';
 import { useNodeMeasurements } from '../hooks/useNodeMeasurements';
 import { formatTimestamp } from '@/shared/utils/date';
 import { formatMbps, formatLatency, formatPercent } from '@/shared/utils/format';
 import Card from '@/shared/components/ui/Card';
 import Spinner from '@/shared/components/ui/Spinner';
 import ErrorMessage from '@/shared/components/ui/ErrorMessage';
-import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import Badge from '@/shared/components/ui/Badge';
+import { ChevronLeft, ChevronRight, ExternalLink, AlertCircle } from 'lucide-react';
 
 interface MeasurementsListProps {
   nodeId: string;
 }
 
+type StatusFilter = 'all' | 'successful' | 'failed';
+
 /**
  * Component to display detailed measurements list with pagination
  */
 export default function MeasurementsList({ nodeId }: MeasurementsListProps) {
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+
   const {
     measurements,
     isLoading,
@@ -26,7 +32,7 @@ export default function MeasurementsList({ nodeId }: MeasurementsListProps) {
     prevPage,
     goToPage,
     refetch,
-  } = useNodeMeasurements(nodeId);
+  } = useNodeMeasurements(nodeId, statusFilter);
 
   if (isLoading && measurements.length === 0) {
     return <Spinner message="Loading measurements..." />;
@@ -54,9 +60,22 @@ export default function MeasurementsList({ nodeId }: MeasurementsListProps) {
 
   return (
     <div className="space-y-4">
-      {/* Summary */}
-      <div className="text-sm text-base-content/70">
-        Showing {(page - 1) * limit + 1}-{Math.min(page * limit, total)} of {total} measurements
+      {/* Filter and Summary */}
+      <div className="flex justify-between items-center">
+        <div className="text-sm text-base-content/70">
+          Showing {(page - 1) * limit + 1}-{Math.min(page * limit, total)} of {total} measurements
+        </div>
+        
+        {/* Status Filter Dropdown */}
+        <select 
+          className="select select-bordered select-sm"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+        >
+          <option value="all">All Measurements</option>
+          <option value="successful">Successful Only</option>
+          <option value="failed">Failed Only</option>
+        </select>
       </div>
 
       {/* Measurements Cards */}
@@ -67,12 +86,19 @@ export default function MeasurementsList({ nodeId }: MeasurementsListProps) {
               {/* Header */}
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-lg font-semibold">
-                    {formatTimestamp(m.timestamp, 'MMM dd, yyyy HH:mm:ss')}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-semibold">
+                      {formatTimestamp(m.timestamp, 'MMM dd, yyyy HH:mm:ss')}
+                    </h3>
+                    {m.is_failed && (
+                      <Badge variant="error" size="sm">
+                        Failed
+                      </Badge>
+                    )}
+                  </div>
                   <p className="text-sm text-base-content/60">ID: {m.id}</p>
                 </div>
-                {m.result_url && (
+                {m.result_url && !m.is_failed && (
                   <a
                     href={m.result_url}
                     target="_blank"
@@ -84,40 +110,51 @@ export default function MeasurementsList({ nodeId }: MeasurementsListProps) {
                 )}
               </div>
 
-              {/* Main Metrics Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <div className="text-xs text-base-content/60">Download</div>
-                  <div className="text-lg font-semibold text-success">
-                    {formatBandwidth(m.download_bandwidth)}
+              {/* Failed Measurement Display */}
+              {m.is_failed ? (
+                <div className="alert alert-error">
+                  <AlertCircle size={20} />
+                  <div>
+                    <h4 className="font-semibold">Measurement Failed</h4>
+                    <p className="text-sm">{m.error_message || 'No error details available'}</p>
                   </div>
                 </div>
-                <div>
-                  <div className="text-xs text-base-content/60">Upload</div>
-                  <div className="text-lg font-semibold text-info">
-                    {formatBandwidth(m.upload_bandwidth)}
+              ) : (
+                <>
+                  {/* Main Metrics Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <div className="text-xs text-base-content/60">Download</div>
+                      <div className="text-lg font-semibold text-success">
+                        {formatBandwidth(m.download_bandwidth)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-base-content/60">Upload</div>
+                      <div className="text-lg font-semibold text-info">
+                        {formatBandwidth(m.upload_bandwidth)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-base-content/60">Ping Latency</div>
+                      <div className="text-lg font-semibold text-warning">
+                        {formatLatency(m.ping_latency)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-base-content/60">Packet Loss</div>
+                      <div className={`text-lg font-semibold ${(m.packet_loss ?? 0) < 5 ? 'text-info' : 'text-error'}`}>
+                        {formatPercent(m.packet_loss)}
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <div className="text-xs text-base-content/60">Ping Latency</div>
-                  <div className="text-lg font-semibold text-warning">
-                    {formatLatency(m.ping_latency)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-base-content/60">Packet Loss</div>
-                  <div className={`text-lg font-semibold ${(m.packet_loss ?? 0) < 5 ? 'text-info' : 'text-error'}`}>
-                    {formatPercent(m.packet_loss)}
-                  </div>
-                </div>
-              </div>
 
-              {/* Detailed Metrics */}
-              <div className="collapse collapse-arrow bg-base-200">
-                <input type="checkbox" />
-                <div className="collapse-title text-sm font-medium">
-                  Show detailed metrics
-                </div>
+                  {/* Detailed Metrics */}
+                  <div className="collapse collapse-arrow bg-base-200">
+                    <input type="checkbox" />
+                    <div className="collapse-title text-sm font-medium">
+                      Show detailed metrics
+                    </div>
                 <div className="collapse-content">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                     {/* Ping Details */}
@@ -293,6 +330,8 @@ export default function MeasurementsList({ nodeId }: MeasurementsListProps) {
                   </div>
                 </div>
               </div>
+                </>
+              )}
             </div>
           </Card>
         ))}

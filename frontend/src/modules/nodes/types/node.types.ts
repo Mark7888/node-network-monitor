@@ -29,6 +29,9 @@ export interface NodeStatistics {
   avg_ping_ms: number;
   avg_jitter_ms: number;
   avg_packet_loss: number;
+  success_rate_24h: number;       // Success rate for last 24 hours (0-100)
+  success_count_24h: number;      // Successful measurements in last 24h
+  failed_count_24h: number;       // Failed measurements in last 24h
 }
 
 export interface NodeDetails extends Node {

@@ -58,6 +58,10 @@ type Measurement struct {
 	// Result info
 	ResultID  *string `json:"result_id,omitempty" db:"result_id"`
 	ResultURL *string `json:"result_url,omitempty" db:"result_url"`
+
+	// Failed measurement info
+	IsFailed     bool    `json:"is_failed" db:"is_failed"`
+	ErrorMessage *string `json:"error_message,omitempty" db:"error_message"`
 }
 
 // MeasurementRequest represents the JSON structure from the speedtest node

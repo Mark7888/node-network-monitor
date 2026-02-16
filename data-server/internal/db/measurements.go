@@ -101,11 +101,17 @@ func (db *DB) InsertMeasurement(m *models.Measurement) error {
 }
 
 // GetMeasurementsByNode retrieves measurements for a specific node
-func (db *DB) GetMeasurementsByNode(nodeID uuid.UUID, from, to *time.Time, page, limit int) ([]models.Measurement, int, error) {
+// status can be: "all", "successful", "failed" (defaults to "all")
+func (db *DB) GetMeasurementsByNode(nodeID uuid.UUID, from, to *time.Time, page, limit int, status string) ([]models.Measurement, int, error) {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
-	// Build query based on time filters
+	// Default to "all" if status is empty
+	if status == "" {
+		status = "all"
+	}
+
+	// Build query based on time filters and status
 	var whereClauses []string
 	var args []interface{}
 	argPos := 1
@@ -128,32 +134,115 @@ func (db *DB) GetMeasurementsByNode(nodeID uuid.UUID, from, to *time.Time, page,
 
 	whereClause := strings.Join(whereClauses, " AND ")
 
-	// Get total count
-	countQuery := "SELECT COUNT(*) FROM measurements WHERE " + whereClause
+	// Build query based on status filter
+	var countQuery string
+	var selectQuery string
+
+	if status == "failed" {
+		// Only failed measurements
+		countQuery = "SELECT COUNT(*) FROM failed_measurements WHERE " + whereClause
+		selectQuery = `
+			SELECT
+				id, node_id, timestamp, created_at,
+				NULL, NULL, NULL, NULL,
+				NULL, NULL, NULL,
+				NULL, NULL, NULL, NULL,
+				NULL, NULL, NULL,
+				NULL, NULL, NULL, NULL,
+				NULL, NULL,
+				NULL, NULL, NULL, NULL, NULL,
+				NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+				NULL, NULL,
+				true as is_failed,
+				error_message
+			FROM failed_measurements
+			WHERE ` + whereClause + `
+			ORDER BY timestamp DESC
+			LIMIT $` + fmt.Sprintf("%d", argPos) + ` OFFSET $` + fmt.Sprintf("%d", argPos+1)
+	} else if status == "successful" {
+		// Only successful measurements
+		countQuery = "SELECT COUNT(*) FROM measurements WHERE " + whereClause
+		selectQuery = `
+			SELECT
+				id, node_id, timestamp, created_at,
+				ping_jitter, ping_latency, ping_low, ping_high,
+				download_bandwidth, download_bytes, download_elapsed,
+				download_latency_iqm, download_latency_low, download_latency_high, download_latency_jitter,
+				upload_bandwidth, upload_bytes, upload_elapsed,
+				upload_latency_iqm, upload_latency_low, upload_latency_high, upload_latency_jitter,
+				packet_loss, isp,
+				interface_internal_ip, interface_name, interface_mac, interface_is_vpn, interface_external_ip,
+				server_id, server_host, server_port, server_name, server_location, server_country, server_ip,
+				result_id, result_url,
+				false as is_failed,
+				NULL as error_message
+			FROM measurements
+			WHERE ` + whereClause + `
+			ORDER BY timestamp DESC
+			LIMIT $` + fmt.Sprintf("%d", argPos) + ` OFFSET $` + fmt.Sprintf("%d", argPos+1)
+	} else {
+		// All measurements (union both tables)
+		countQuery = fmt.Sprintf(`
+			SELECT 
+				(SELECT COUNT(*) FROM measurements WHERE %s) + 
+				(SELECT COUNT(*) FROM failed_measurements WHERE %s)
+		`, whereClause, whereClause)
+
+		selectQuery = `
+			SELECT * FROM (
+				SELECT
+					id, node_id, timestamp, created_at,
+					ping_jitter, ping_latency, ping_low, ping_high,
+					download_bandwidth, download_bytes, download_elapsed,
+					download_latency_iqm, download_latency_low, download_latency_high, download_latency_jitter,
+					upload_bandwidth, upload_bytes, upload_elapsed,
+					upload_latency_iqm, upload_latency_low, upload_latency_high, upload_latency_jitter,
+					packet_loss, isp,
+					interface_internal_ip, interface_name, interface_mac, interface_is_vpn, interface_external_ip,
+					server_id, server_host, server_port, server_name, server_location, server_country, server_ip,
+					result_id, result_url,
+					false as is_failed,
+					NULL as error_message
+				FROM measurements
+				WHERE ` + whereClause + `
+				UNION ALL
+				SELECT
+					id, node_id, timestamp, created_at,
+					NULL, NULL, NULL, NULL,
+					NULL, NULL, NULL,
+					NULL, NULL, NULL, NULL,
+					NULL, NULL, NULL,
+					NULL, NULL, NULL, NULL,
+					NULL, NULL,
+					NULL, NULL, NULL, NULL, NULL,
+					NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+					NULL, NULL,
+					true as is_failed,
+					error_message
+				FROM failed_measurements
+				WHERE ` + whereClause + `
+			) combined
+			ORDER BY timestamp DESC
+			LIMIT $` + fmt.Sprintf("%d", argPos) + ` OFFSET $` + fmt.Sprintf("%d", argPos+1)
+	}
+
+	// Get total count - for "all" we need to pass args twice for the two COUNT queries
 	var total int
-	err := db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to count measurements: %w", err)
+	if status == "all" {
+		// For the UNION count query, we need args twice
+		countArgs := append(args, args...)
+		err := db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to count measurements: %w", err)
+		}
+	} else {
+		err := db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to count measurements: %w", err)
+		}
 	}
 
 	// Get measurements
-	selectQuery := `
-		SELECT
-			id, node_id, timestamp, created_at,
-			ping_jitter, ping_latency, ping_low, ping_high,
-			download_bandwidth, download_bytes, download_elapsed,
-			download_latency_iqm, download_latency_low, download_latency_high, download_latency_jitter,
-			upload_bandwidth, upload_bytes, upload_elapsed,
-			upload_latency_iqm, upload_latency_low, upload_latency_high, upload_latency_jitter,
-			packet_loss, isp,
-			interface_internal_ip, interface_name, interface_mac, interface_is_vpn, interface_external_ip,
-			server_id, server_host, server_port, server_name, server_location, server_country, server_ip,
-			result_id, result_url
-		FROM measurements
-		WHERE ` + whereClause + `
-		ORDER BY timestamp DESC
-		LIMIT $` + fmt.Sprintf("%d", argPos) + ` OFFSET $` + fmt.Sprintf("%d", argPos+1)
-
 	args = append(args, limit, (page-1)*limit)
 
 	rows, err := db.QueryContext(ctx, selectQuery, args...)
@@ -176,6 +265,7 @@ func (db *DB) GetMeasurementsByNode(nodeID uuid.UUID, from, to *time.Time, page,
 			&m.InterfaceInternalIP, &m.InterfaceName, &m.InterfaceMacAddr, &m.InterfaceIsVPN, &m.InterfaceExternalIP,
 			&m.ServerID, &m.ServerHost, &m.ServerPort, &m.ServerName, &m.ServerLocation, &m.ServerCountry, &m.ServerIP,
 			&m.ResultID, &m.ResultURL,
+			&m.IsFailed, &m.ErrorMessage,
 		)
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to scan measurement: %w", err)
@@ -206,6 +296,7 @@ func (db *DB) InsertFailedMeasurement(nodeID uuid.UUID, timestamp time.Time, err
 }
 
 // GetAggregatedMeasurements retrieves aggregated measurements for charting
+// This includes failed measurements as null data points to create gaps in charts
 func (db *DB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.Time, interval string) ([]models.AggregatedMeasurement, error) {
 	ctx, cancel := withTimeout()
 	defer cancel()
@@ -238,6 +329,7 @@ func (db *DB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.Time,
 
 	whereClause := strings.Join(whereClauses, " AND ")
 
+	// Query successful measurements with aggregation
 	query := fmt.Sprintf(`
 		SELECT
 			%s as time_bucket,
@@ -250,7 +342,8 @@ func (db *DB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.Time,
 			COALESCE(AVG(m.packet_loss), 0) as avg_packet_loss,
 			COALESCE(MIN(m.download_bandwidth) / 125000.0, 0) as min_download_mbps,
 			COALESCE(MAX(m.download_bandwidth) / 125000.0, 0) as max_download_mbps,
-			COUNT(*) as sample_count
+			COUNT(*) as sample_count,
+			false as has_failures
 		FROM measurements m
 		JOIN nodes n ON m.node_id = n.id
 		WHERE %s
@@ -267,6 +360,7 @@ func (db *DB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.Time,
 	var results []models.AggregatedMeasurement
 	for rows.Next() {
 		var agg models.AggregatedMeasurement
+		var hasFailures bool
 
 		// SQLite returns time_bucket as string, PostgreSQL returns it as time.Time
 		if db.dbType == "sqlite" {
@@ -283,6 +377,7 @@ func (db *DB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.Time,
 				&agg.MinDownloadMbps,
 				&agg.MaxDownloadMbps,
 				&agg.SampleCount,
+				&hasFailures,
 			)
 			if err != nil {
 				return nil, fmt.Errorf("failed to scan aggregated measurement: %w", err)
@@ -307,6 +402,7 @@ func (db *DB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.Time,
 				&agg.MinDownloadMbps,
 				&agg.MaxDownloadMbps,
 				&agg.SampleCount,
+				&hasFailures,
 			)
 			if err != nil {
 				return nil, fmt.Errorf("failed to scan aggregated measurement: %w", err)
