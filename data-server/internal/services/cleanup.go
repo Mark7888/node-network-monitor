@@ -13,14 +13,14 @@ import (
 
 // CleanupService handles periodic data cleanup based on retention policies
 type CleanupService struct {
-	db     *db.DB
+	db     db.Database
 	config *config.Config
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
 // NewCleanupService creates a new cleanup service
-func NewCleanupService(database *db.DB, cfg *config.Config) *CleanupService {
+func NewCleanupService(database db.Database, cfg *config.Config) *CleanupService {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &CleanupService{
 		db:     database,

@@ -1,4 +1,4 @@
-package db
+package postgres
 
 import (
 	"database/sql"
@@ -8,11 +8,12 @@ import (
 	"mark7888/speedtest-data-server/internal/auth"
 	"mark7888/speedtest-data-server/pkg/models"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 )
 
 // CreateAPIKey creates a new API key
-func (db *DB) CreateAPIKey(name, plainKey, createdBy string) (*models.APIKey, error) {
+func (p *PostgresDB) CreateAPIKey(name, plainKey, createdBy string) (*models.APIKey, error) {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
@@ -34,20 +35,16 @@ func (db *DB) CreateAPIKey(name, plainKey, createdBy string) (*models.APIKey, er
 		apiKey.CreatedBy = &createdBy
 	}
 
-	query := `
-		INSERT INTO api_keys (id, name, key_hash, enabled, created_at, created_by)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`
+	query, args, err := p.builder.
+		Insert("api_keys").
+		Columns("id", "name", "key_hash", "enabled", "created_at", "created_by").
+		Values(apiKey.ID, apiKey.Name, apiKey.KeyHash, apiKey.Enabled, apiKey.CreatedAt, apiKey.CreatedBy).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build insert query: %w", err)
+	}
 
-	_, err = db.ExecContext(ctx, query,
-		apiKey.ID,
-		apiKey.Name,
-		apiKey.KeyHash,
-		apiKey.Enabled,
-		apiKey.CreatedAt,
-		apiKey.CreatedBy,
-	)
-
+	_, err = p.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create API key: %w", err)
 	}
@@ -56,18 +53,21 @@ func (db *DB) CreateAPIKey(name, plainKey, createdBy string) (*models.APIKey, er
 }
 
 // GetAPIKeyByID retrieves an API key by ID
-func (db *DB) GetAPIKeyByID(id uuid.UUID) (*models.APIKey, error) {
+func (p *PostgresDB) GetAPIKeyByID(id uuid.UUID) (*models.APIKey, error) {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
-	query := `
-		SELECT id, name, key_hash, enabled, created_at, created_by, last_used, revoked_at
-		FROM api_keys
-		WHERE id = $1
-	`
+	query, args, err := p.builder.
+		Select("id", "name", "key_hash", "enabled", "created_at", "created_by", "last_used", "revoked_at").
+		From("api_keys").
+		Where(sq.Eq{"id": id}).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build select query: %w", err)
+	}
 
 	var apiKey models.APIKey
-	err := db.QueryRowContext(ctx, query, id).Scan(
+	err = p.db.QueryRowContext(ctx, query, args...).Scan(
 		&apiKey.ID,
 		&apiKey.Name,
 		&apiKey.KeyHash,
@@ -89,17 +89,20 @@ func (db *DB) GetAPIKeyByID(id uuid.UUID) (*models.APIKey, error) {
 }
 
 // GetAllAPIKeys retrieves all API keys
-func (db *DB) GetAllAPIKeys() ([]models.APIKey, error) {
+func (p *PostgresDB) GetAllAPIKeys() ([]models.APIKey, error) {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
-	query := `
-		SELECT id, name, key_hash, enabled, created_at, created_by, last_used, revoked_at
-		FROM api_keys
-		ORDER BY created_at DESC
-	`
+	query, args, err := p.builder.
+		Select("id", "name", "key_hash", "enabled", "created_at", "created_by", "last_used", "revoked_at").
+		From("api_keys").
+		OrderBy("created_at DESC").
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build select query: %w", err)
+	}
 
-	rows, err := db.QueryContext(ctx, query)
+	rows, err := p.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query API keys: %w", err)
 	}
@@ -128,18 +131,22 @@ func (db *DB) GetAllAPIKeys() ([]models.APIKey, error) {
 }
 
 // GetEnabledAPIKeys retrieves all enabled API keys
-func (db *DB) GetEnabledAPIKeys() ([]models.APIKey, error) {
+func (p *PostgresDB) GetEnabledAPIKeys() ([]models.APIKey, error) {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
-	query := `
-		SELECT id, name, key_hash, enabled, created_at, created_by, last_used, revoked_at
-		FROM api_keys
-		WHERE enabled = true AND revoked_at IS NULL
-		ORDER BY created_at DESC
-	`
+	query, args, err := p.builder.
+		Select("id", "name", "key_hash", "enabled", "created_at", "created_by", "last_used", "revoked_at").
+		From("api_keys").
+		Where(sq.Eq{"enabled": true}).
+		Where("revoked_at IS NULL").
+		OrderBy("created_at DESC").
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build select query: %w", err)
+	}
 
-	rows, err := db.QueryContext(ctx, query)
+	rows, err := p.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query enabled API keys: %w", err)
 	}
@@ -168,17 +175,20 @@ func (db *DB) GetEnabledAPIKeys() ([]models.APIKey, error) {
 }
 
 // UpdateAPIKeyEnabled updates the enabled status of an API key
-func (db *DB) UpdateAPIKeyEnabled(id uuid.UUID, enabled bool) error {
+func (p *PostgresDB) UpdateAPIKeyEnabled(id uuid.UUID, enabled bool) error {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
-	query := `
-		UPDATE api_keys
-		SET enabled = $1
-		WHERE id = $2
-	`
+	query, args, err := p.builder.
+		Update("api_keys").
+		Set("enabled", enabled).
+		Where(sq.Eq{"id": id}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build update query: %w", err)
+	}
 
-	result, err := db.ExecContext(ctx, query, enabled, id)
+	result, err := p.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("failed to update API key: %w", err)
 	}
@@ -192,13 +202,19 @@ func (db *DB) UpdateAPIKeyEnabled(id uuid.UUID, enabled bool) error {
 }
 
 // DeleteAPIKey deletes an API key
-func (db *DB) DeleteAPIKey(id uuid.UUID) error {
+func (p *PostgresDB) DeleteAPIKey(id uuid.UUID) error {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
-	query := "DELETE FROM api_keys WHERE id = $1"
+	query, args, err := p.builder.
+		Delete("api_keys").
+		Where(sq.Eq{"id": id}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build delete query: %w", err)
+	}
 
-	result, err := db.ExecContext(ctx, query, id)
+	result, err := p.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("failed to delete API key: %w", err)
 	}
@@ -212,18 +228,20 @@ func (db *DB) DeleteAPIKey(id uuid.UUID) error {
 }
 
 // UpdateAPIKeyLastUsed updates the last_used timestamp of an API key
-func (db *DB) UpdateAPIKeyLastUsed(id uuid.UUID) error {
+func (p *PostgresDB) UpdateAPIKeyLastUsed(id uuid.UUID) error {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
-	nowSQL := db.getNowSQL()
-	query := fmt.Sprintf(`
-		UPDATE api_keys
-		SET last_used = %s
-		WHERE id = $1
-	`, nowSQL)
+	query, args, err := p.builder.
+		Update("api_keys").
+		Set("last_used", sq.Expr("NOW()")).
+		Where(sq.Eq{"id": id}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build update query: %w", err)
+	}
 
-	_, err := db.ExecContext(ctx, query, id)
+	_, err = p.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("failed to update API key last_used: %w", err)
 	}
@@ -232,9 +250,9 @@ func (db *DB) UpdateAPIKeyLastUsed(id uuid.UUID) error {
 }
 
 // VerifyAPIKey verifies an API key and returns the key details if valid
-func (db *DB) VerifyAPIKey(plainKey string) (*models.APIKey, error) {
+func (p *PostgresDB) VerifyAPIKey(plainKey string) (*models.APIKey, error) {
 	// Get all enabled keys
-	apiKeys, err := db.GetEnabledAPIKeys()
+	apiKeys, err := p.GetEnabledAPIKeys()
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +261,7 @@ func (db *DB) VerifyAPIKey(plainKey string) (*models.APIKey, error) {
 	for _, apiKey := range apiKeys {
 		if auth.VerifyAPIKey(plainKey, apiKey.KeyHash) {
 			// Update last used timestamp
-			_ = db.UpdateAPIKeyLastUsed(apiKey.ID)
+			_ = p.UpdateAPIKeyLastUsed(apiKey.ID)
 			return &apiKey, nil
 		}
 	}

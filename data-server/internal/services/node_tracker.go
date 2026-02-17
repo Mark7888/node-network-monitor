@@ -13,14 +13,14 @@ import (
 
 // NodeTracker monitors node status and updates them accordingly
 type NodeTracker struct {
-	db     *db.DB
+	db     db.Database
 	config *config.Config
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
 // NewNodeTracker creates a new node tracker
-func NewNodeTracker(database *db.DB, cfg *config.Config) *NodeTracker {
+func NewNodeTracker(database db.Database, cfg *config.Config) *NodeTracker {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &NodeTracker{
 		db:     database,

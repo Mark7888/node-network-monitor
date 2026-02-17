@@ -17,7 +17,7 @@ import (
 var startTime = time.Now()
 
 // SetupRouter configures and returns the Gin router
-func SetupRouter(cfg *config.Config, database *db.DB, jwtManager *auth.JWTManager) *gin.Engine {
+func SetupRouter(cfg *config.Config, database db.Database, jwtManager *auth.JWTManager) *gin.Engine {
 	// Set Gin mode
 	if cfg.Server.Mode == "release" {
 		gin.SetMode(gin.ReleaseMode)

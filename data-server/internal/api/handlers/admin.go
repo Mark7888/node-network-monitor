@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"mark7888/speedtest-data-server/internal/api/validators"
@@ -19,13 +20,13 @@ import (
 
 // AdminHandler handles admin-related endpoints
 type AdminHandler struct {
-	db         *db.DB
+	db         db.Database
 	jwtManager *auth.JWTManager
 	config     *config.Config
 }
 
 // NewAdminHandler creates a new admin handler
-func NewAdminHandler(database *db.DB, jwtManager *auth.JWTManager, cfg *config.Config) *AdminHandler {
+func NewAdminHandler(database db.Database, jwtManager *auth.JWTManager, cfg *config.Config) *AdminHandler {
 	return &AdminHandler{
 		db:         database,
 		jwtManager: jwtManager,
@@ -164,7 +165,12 @@ func (h *AdminHandler) HandleGetNodeDetails(c *gin.Context) {
 
 	nodeWithStats, err := h.db.GetNodeWithStats(nodeID)
 	if err != nil {
-		logger.Log.Error("Failed to get node details", zap.Error(err))
+		// Log at Info level for "not found" errors (expected 404s), Error level for actual DB issues
+		if strings.Contains(err.Error(), "not found") {
+			logger.Log.Info("Node not found", zap.String("node_id", nodeID.String()))
+		} else {
+			logger.Log.Error("Failed to get node details", zap.Error(err))
+		}
 		c.JSON(http.StatusNotFound, models.ErrorResponse{
 			Error: "Node not found",
 		})

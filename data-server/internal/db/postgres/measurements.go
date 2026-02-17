@@ -1,4 +1,4 @@
-package db
+package postgres
 
 import (
 	"database/sql"
@@ -9,17 +9,17 @@ import (
 	"mark7888/speedtest-data-server/internal/logger"
 	"mark7888/speedtest-data-server/pkg/models"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
 // InsertMeasurement inserts or updates a measurement
-func (db *DB) InsertMeasurement(m *models.Measurement) error {
+func (p *PostgresDB) InsertMeasurement(m *models.Measurement) error {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
-	nowSQL := db.getNowSQL()
-	query := fmt.Sprintf(`
+	query := `
 		INSERT INTO measurements (
 			node_id, timestamp, created_at,
 			ping_jitter, ping_latency, ping_low, ping_high,
@@ -32,7 +32,7 @@ func (db *DB) InsertMeasurement(m *models.Measurement) error {
 			server_id, server_host, server_port, server_name, server_location, server_country, server_ip,
 			result_id, result_url
 		) VALUES (
-			$1, $2, %s,
+			$1, $2, NOW(),
 			$3, $4, $5, $6,
 			$7, $8, $9,
 			$10, $11, $12, $13,
@@ -78,9 +78,9 @@ func (db *DB) InsertMeasurement(m *models.Measurement) error {
 			server_ip = EXCLUDED.server_ip,
 			result_id = EXCLUDED.result_id,
 			result_url = EXCLUDED.result_url
-	`, nowSQL)
+	`
 
-	_, err := db.ExecContext(ctx, query,
+	_, err := p.db.ExecContext(ctx, query,
 		m.NodeID, m.Timestamp,
 		m.PingJitter, m.PingLatency, m.PingLow, m.PingHigh,
 		m.DownloadBandwidth, m.DownloadBytes, m.DownloadElapsed,
@@ -100,9 +100,30 @@ func (db *DB) InsertMeasurement(m *models.Measurement) error {
 	return nil
 }
 
+// InsertFailedMeasurement inserts a failed measurement record
+func (p *PostgresDB) InsertFailedMeasurement(nodeID uuid.UUID, timestamp time.Time, errorMessage string, retryCount int) error {
+	ctx, cancel := withTimeout()
+	defer cancel()
+
+	query, args, err := p.builder.
+		Insert("failed_measurements").
+		Columns("node_id", "timestamp", "error_message", "retry_count", "created_at").
+		Values(nodeID, timestamp, errorMessage, retryCount, sq.Expr("NOW()")).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build insert query: %w", err)
+	}
+
+	_, err = p.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to insert failed measurement: %w", err)
+	}
+
+	return nil
+}
+
 // GetMeasurementsByNode retrieves measurements for a specific node
-// status can be: "all", "successful", "failed" (defaults to "all")
-func (db *DB) GetMeasurementsByNode(nodeID uuid.UUID, from, to *time.Time, page, limit int, status string) ([]models.Measurement, int, error) {
+func (p *PostgresDB) GetMeasurementsByNode(nodeID uuid.UUID, from, to *time.Time, page, limit int, status string) ([]models.Measurement, int, error) {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
@@ -111,37 +132,60 @@ func (db *DB) GetMeasurementsByNode(nodeID uuid.UUID, from, to *time.Time, page,
 		status = "all"
 	}
 
-	// Build query based on time filters and status
-	var whereClauses []string
-	var args []interface{}
-	argPos := 1
-
-	whereClauses = append(whereClauses, fmt.Sprintf("node_id = $%d", argPos))
-	args = append(args, nodeID)
-	argPos++
-
+	// Build WHERE conditions
+	whereConditions := sq.And{sq.Eq{"node_id": nodeID}}
 	if from != nil {
-		whereClauses = append(whereClauses, fmt.Sprintf("timestamp >= $%d", argPos))
-		args = append(args, *from)
-		argPos++
+		whereConditions = append(whereConditions, sq.GtOrEq{"timestamp": *from})
 	}
-
 	if to != nil {
-		whereClauses = append(whereClauses, fmt.Sprintf("timestamp <= $%d", argPos))
-		args = append(args, *to)
-		argPos++
+		whereConditions = append(whereConditions, sq.LtOrEq{"timestamp": *to})
 	}
 
-	whereClause := strings.Join(whereClauses, " AND ")
-
-	// Build query based on status filter
-	var countQuery string
-	var selectQuery string
+	// Get total count based on status
+	var total int
+	var err error
 
 	if status == "failed" {
-		// Only failed measurements
-		countQuery = "SELECT COUNT(*) FROM failed_measurements WHERE " + whereClause
-		selectQuery = `
+		countQuery, countArgs, _ := p.builder.
+			Select("COUNT(*)").
+			From("failed_measurements").
+			Where(whereConditions).
+			ToSql()
+		err = p.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total)
+	} else if status == "successful" {
+		countQuery, countArgs, _ := p.builder.
+			Select("COUNT(*)").
+			From("measurements").
+			Where(whereConditions).
+			ToSql()
+		err = p.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total)
+	} else {
+		// Count both tables
+		countQuery1, countArgs1, _ := p.builder.
+			Select("COUNT(*)").
+			From("measurements").
+			Where(whereConditions).
+			ToSql()
+		countQuery2, countArgs2, _ := p.builder.
+			Select("COUNT(*)").
+			From("failed_measurements").
+			Where(whereConditions).
+			ToSql()
+
+		var count1, count2 int
+		_ = p.db.QueryRowContext(ctx, countQuery1, countArgs1...).Scan(&count1)
+		_ = p.db.QueryRowContext(ctx, countQuery2, countArgs2...).Scan(&count2)
+		total = count1 + count2
+	}
+
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count measurements: %w", err)
+	}
+
+	// Build select query based on status
+	var rows *sql.Rows
+	if status == "failed" {
+		query := `
 			SELECT
 				id, node_id, timestamp, created_at,
 				NULL, NULL, NULL, NULL,
@@ -156,13 +200,15 @@ func (db *DB) GetMeasurementsByNode(nodeID uuid.UUID, from, to *time.Time, page,
 				true as is_failed,
 				error_message
 			FROM failed_measurements
-			WHERE ` + whereClause + `
+			WHERE ` + p.buildWhereClause(whereConditions) + `
 			ORDER BY timestamp DESC
-			LIMIT $` + fmt.Sprintf("%d", argPos) + ` OFFSET $` + fmt.Sprintf("%d", argPos+1)
+			LIMIT $` + fmt.Sprintf("%d", len(p.extractArgs(whereConditions))+1) +
+			` OFFSET $` + fmt.Sprintf("%d", len(p.extractArgs(whereConditions))+2)
+
+		args := append(p.extractArgs(whereConditions), limit, (page-1)*limit)
+		rows, err = p.db.QueryContext(ctx, query, args...)
 	} else if status == "successful" {
-		// Only successful measurements
-		countQuery = "SELECT COUNT(*) FROM measurements WHERE " + whereClause
-		selectQuery = `
+		query := `
 			SELECT
 				id, node_id, timestamp, created_at,
 				ping_jitter, ping_latency, ping_low, ping_high,
@@ -177,18 +223,17 @@ func (db *DB) GetMeasurementsByNode(nodeID uuid.UUID, from, to *time.Time, page,
 				false as is_failed,
 				NULL as error_message
 			FROM measurements
-			WHERE ` + whereClause + `
+			WHERE ` + p.buildWhereClause(whereConditions) + `
 			ORDER BY timestamp DESC
-			LIMIT $` + fmt.Sprintf("%d", argPos) + ` OFFSET $` + fmt.Sprintf("%d", argPos+1)
-	} else {
-		// All measurements (union both tables)
-		countQuery = fmt.Sprintf(`
-			SELECT 
-				(SELECT COUNT(*) FROM measurements WHERE %s) + 
-				(SELECT COUNT(*) FROM failed_measurements WHERE %s)
-		`, whereClause, whereClause)
+			LIMIT $` + fmt.Sprintf("%d", len(p.extractArgs(whereConditions))+1) +
+			` OFFSET $` + fmt.Sprintf("%d", len(p.extractArgs(whereConditions))+2)
 
-		selectQuery = `
+		args := append(p.extractArgs(whereConditions), limit, (page-1)*limit)
+		rows, err = p.db.QueryContext(ctx, query, args...)
+	} else {
+		// Union both tables
+		numArgs := len(p.extractArgs(whereConditions))
+		query := `
 			SELECT * FROM (
 				SELECT
 					id, node_id, timestamp, created_at,
@@ -204,7 +249,7 @@ func (db *DB) GetMeasurementsByNode(nodeID uuid.UUID, from, to *time.Time, page,
 					false as is_failed,
 					NULL as error_message
 				FROM measurements
-				WHERE ` + whereClause + `
+				WHERE ` + p.buildWhereClause(whereConditions) + `
 				UNION ALL
 				SELECT
 					id, node_id, timestamp, created_at,
@@ -220,32 +265,16 @@ func (db *DB) GetMeasurementsByNode(nodeID uuid.UUID, from, to *time.Time, page,
 					true as is_failed,
 					error_message
 				FROM failed_measurements
-				WHERE ` + whereClause + `
+				WHERE ` + p.buildWhereClauseWithOffset(whereConditions, numArgs) + `
 			) combined
 			ORDER BY timestamp DESC
-			LIMIT $` + fmt.Sprintf("%d", argPos) + ` OFFSET $` + fmt.Sprintf("%d", argPos+1)
+			LIMIT $` + fmt.Sprintf("%d", numArgs*2+1) +
+			` OFFSET $` + fmt.Sprintf("%d", numArgs*2+2)
+
+		args := append(append(p.extractArgs(whereConditions), p.extractArgs(whereConditions)...), limit, (page-1)*limit)
+		rows, err = p.db.QueryContext(ctx, query, args...)
 	}
 
-	// Get total count - for "all" we need to pass args twice for the two COUNT queries
-	var total int
-	if status == "all" {
-		// For the UNION count query, we need args twice
-		countArgs := append(args, args...)
-		err := db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total)
-		if err != nil {
-			return nil, 0, fmt.Errorf("failed to count measurements: %w", err)
-		}
-	} else {
-		err := db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
-		if err != nil {
-			return nil, 0, fmt.Errorf("failed to count measurements: %w", err)
-		}
-	}
-
-	// Get measurements
-	args = append(args, limit, (page-1)*limit)
-
-	rows, err := db.QueryContext(ctx, selectQuery, args...)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to query measurements: %w", err)
 	}
@@ -276,60 +305,76 @@ func (db *DB) GetMeasurementsByNode(nodeID uuid.UUID, from, to *time.Time, page,
 	return measurements, total, nil
 }
 
-// InsertFailedMeasurement inserts a failed measurement record
-func (db *DB) InsertFailedMeasurement(nodeID uuid.UUID, timestamp time.Time, errorMessage string, retryCount int) error {
-	ctx, cancel := withTimeout()
-	defer cancel()
+// Helper functions for building WHERE clauses manually
+func (p *PostgresDB) buildWhereClause(conditions sq.And) string {
+	return p.buildWhereClauseWithOffset(conditions, 0)
+}
 
-	nowSQL := db.getNowSQL()
-	query := fmt.Sprintf(`
-		INSERT INTO failed_measurements (node_id, timestamp, error_message, retry_count, created_at)
-		VALUES ($1, $2, $3, $4, %s)
-	`, nowSQL)
-
-	_, err := db.ExecContext(ctx, query, nodeID, timestamp, errorMessage, retryCount)
-	if err != nil {
-		return fmt.Errorf("failed to insert failed measurement: %w", err)
+func (p *PostgresDB) buildWhereClauseWithOffset(conditions sq.And, offset int) string {
+	parts := []string{}
+	argNum := offset + 1
+	for _, cond := range conditions {
+		switch v := cond.(type) {
+		case sq.Eq:
+			for col := range v {
+				parts = append(parts, fmt.Sprintf("%s = $%d", col, argNum))
+				argNum++
+			}
+		case sq.GtOrEq:
+			for col := range v {
+				parts = append(parts, fmt.Sprintf("%s >= $%d", col, argNum))
+				argNum++
+			}
+		case sq.LtOrEq:
+			for col := range v {
+				parts = append(parts, fmt.Sprintf("%s <= $%d", col, argNum))
+				argNum++
+			}
+		}
 	}
+	return strings.Join(parts, " AND ")
+}
 
-	return nil
+func (p *PostgresDB) extractArgs(conditions sq.And) []interface{} {
+	args := []interface{}{}
+	for _, cond := range conditions {
+		switch v := cond.(type) {
+		case sq.Eq:
+			for _, val := range v {
+				args = append(args, val)
+			}
+		case sq.GtOrEq:
+			for _, val := range v {
+				args = append(args, val)
+			}
+		case sq.LtOrEq:
+			for _, val := range v {
+				args = append(args, val)
+			}
+		}
+	}
+	return args
 }
 
 // GetAggregatedMeasurements retrieves aggregated measurements for charting
-// This includes failed measurements as null data points to create gaps in charts
-func (db *DB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.Time, interval string) ([]models.AggregatedMeasurement, error) {
+func (p *PostgresDB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.Time, interval string) ([]models.AggregatedMeasurement, error) {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
 	// Get database-specific date truncation function
-	truncFunc := db.getDateTruncSQL(interval)
+	truncFunc := getDateTruncSQL(interval)
 
-	// Build query
-	var whereClauses []string
-	var args []interface{}
-	argPos := 1
-
-	whereClauses = append(whereClauses, fmt.Sprintf("timestamp >= %s", db.getPlaceholder(argPos)))
-	args = append(args, from)
-	argPos++
-
-	whereClauses = append(whereClauses, fmt.Sprintf("timestamp <= %s", db.getPlaceholder(argPos)))
-	args = append(args, to)
-	argPos++
+	// Build WHERE conditions
+	whereBuilder := p.builder.
+		Select().
+		Where(sq.GtOrEq{"timestamp": from}).
+		Where(sq.LtOrEq{"timestamp": to})
 
 	if len(nodeIDs) > 0 {
-		placeholders := make([]string, len(nodeIDs))
-		for i, nodeID := range nodeIDs {
-			placeholders[i] = db.getPlaceholder(argPos)
-			args = append(args, nodeID)
-			argPos++
-		}
-		whereClauses = append(whereClauses, fmt.Sprintf("m.node_id IN (%s)", strings.Join(placeholders, ",")))
+		whereBuilder = whereBuilder.Where(sq.Eq{"m.node_id": nodeIDs})
 	}
 
-	whereClause := strings.Join(whereClauses, " AND ")
-
-	// Query successful measurements with aggregation
+	// Build full query with raw SQL for date truncation
 	query := fmt.Sprintf(`
 		SELECT
 			%s as time_bucket,
@@ -346,12 +391,28 @@ func (db *DB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.Time,
 			false as has_failures
 		FROM measurements m
 		JOIN nodes n ON m.node_id = n.id
-		WHERE %s
+		WHERE m.timestamp >= $1 AND m.timestamp <= $2
+	`, truncFunc)
+
+	args := []interface{}{from, to}
+	argPos := 3
+
+	if len(nodeIDs) > 0 {
+		placeholders := []string{}
+		for _, nodeID := range nodeIDs {
+			placeholders = append(placeholders, fmt.Sprintf("$%d", argPos))
+			args = append(args, nodeID)
+			argPos++
+		}
+		query += fmt.Sprintf(" AND m.node_id IN (%s)", strings.Join(placeholders, ","))
+	}
+
+	query += `
 		GROUP BY time_bucket, m.node_id, n.name
 		ORDER BY time_bucket, m.node_id
-	`, truncFunc, whereClause)
+	`
 
-	rows, err := db.QueryContext(ctx, query, args...)
+	rows, err := p.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query aggregated measurements: %w", err)
 	}
@@ -362,51 +423,22 @@ func (db *DB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.Time,
 		var agg models.AggregatedMeasurement
 		var hasFailures bool
 
-		// SQLite returns time_bucket as string, PostgreSQL returns it as time.Time
-		if db.dbType == "sqlite" {
-			var timeBucketStr string
-			err := rows.Scan(
-				&timeBucketStr,
-				&agg.NodeID,
-				&agg.NodeName,
-				&agg.AvgDownloadMbps,
-				&agg.AvgUploadMbps,
-				&agg.AvgPingMs,
-				&agg.AvgJitterMs,
-				&agg.AvgPacketLoss,
-				&agg.MinDownloadMbps,
-				&agg.MaxDownloadMbps,
-				&agg.SampleCount,
-				&hasFailures,
-			)
-			if err != nil {
-				return nil, fmt.Errorf("failed to scan aggregated measurement: %w", err)
-			}
-
-			// Parse the string timestamp
-			parsedTime, err := time.Parse("2006-01-02 15:04:05", timeBucketStr)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse time_bucket: %w", err)
-			}
-			agg.Timestamp = parsedTime
-		} else {
-			err := rows.Scan(
-				&agg.Timestamp,
-				&agg.NodeID,
-				&agg.NodeName,
-				&agg.AvgDownloadMbps,
-				&agg.AvgUploadMbps,
-				&agg.AvgPingMs,
-				&agg.AvgJitterMs,
-				&agg.AvgPacketLoss,
-				&agg.MinDownloadMbps,
-				&agg.MaxDownloadMbps,
-				&agg.SampleCount,
-				&hasFailures,
-			)
-			if err != nil {
-				return nil, fmt.Errorf("failed to scan aggregated measurement: %w", err)
-			}
+		err := rows.Scan(
+			&agg.Timestamp,
+			&agg.NodeID,
+			&agg.NodeName,
+			&agg.AvgDownloadMbps,
+			&agg.AvgUploadMbps,
+			&agg.AvgPingMs,
+			&agg.AvgJitterMs,
+			&agg.AvgPacketLoss,
+			&agg.MinDownloadMbps,
+			&agg.MaxDownloadMbps,
+			&agg.SampleCount,
+			&hasFailures,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan aggregated measurement: %w", err)
 		}
 
 		results = append(results, agg)
@@ -415,32 +447,60 @@ func (db *DB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.Time,
 	return results, nil
 }
 
+// getDateTruncSQL returns the SQL for date truncation based on interval
+func getDateTruncSQL(interval string) string {
+	switch interval {
+	case "5m":
+		return "date_trunc('hour', timestamp) + INTERVAL '5 min' * floor(EXTRACT(MINUTE FROM timestamp)::int / 5)"
+	case "15m":
+		return "date_trunc('hour', timestamp) + INTERVAL '15 min' * floor(EXTRACT(MINUTE FROM timestamp)::int / 15)"
+	case "1h":
+		return "date_trunc('hour', timestamp)"
+	case "6h":
+		return "date_trunc('hour', timestamp) - (EXTRACT(HOUR FROM timestamp)::int % 6) * INTERVAL '1 hour'"
+	case "1d":
+		return "date_trunc('day', timestamp)"
+	default:
+		return "date_trunc('hour', timestamp)"
+	}
+}
+
 // GetMeasurementCounts retrieves measurement counts
-func (db *DB) GetMeasurementCounts() (total int64, last24h int64, lastTimestamp *time.Time, err error) {
+func (p *PostgresDB) GetMeasurementCounts() (total int64, last24h int64, lastTimestamp *time.Time, err error) {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
 	// Get total count
-	err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM measurements").Scan(&total)
+	countQuery, countArgs, _ := p.builder.
+		Select("COUNT(*)").
+		From("measurements").
+		ToSql()
+	err = p.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total)
 	if err != nil {
 		return 0, 0, nil, fmt.Errorf("failed to count measurements: %w", err)
 	}
 
 	// Get last 24h count
 	past24h := time.Now().UTC().Add(-24 * time.Hour)
-	err = db.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM measurements WHERE created_at >= $1",
-		past24h,
-	).Scan(&last24h)
+	last24hQuery, last24hArgs, _ := p.builder.
+		Select("COUNT(*)").
+		From("measurements").
+		Where(sq.GtOrEq{"created_at": past24h}).
+		ToSql()
+	err = p.db.QueryRowContext(ctx, last24hQuery, last24hArgs...).Scan(&last24h)
 	if err != nil {
 		return 0, 0, nil, fmt.Errorf("failed to count last 24h measurements: %w", err)
 	}
 
 	// Get last measurement timestamp
 	var ts time.Time
-	err = db.QueryRowContext(ctx,
-		"SELECT timestamp FROM measurements ORDER BY timestamp DESC LIMIT 1",
-	).Scan(&ts)
+	lastQuery, lastArgs, _ := p.builder.
+		Select("timestamp").
+		From("measurements").
+		OrderBy("timestamp DESC").
+		Limit(1).
+		ToSql()
+	err = p.db.QueryRowContext(ctx, lastQuery, lastArgs...).Scan(&ts)
 	if err != nil && err != sql.ErrNoRows {
 		return 0, 0, nil, fmt.Errorf("failed to get last measurement timestamp: %w", err)
 	}
@@ -452,7 +512,7 @@ func (db *DB) GetMeasurementCounts() (total int64, last24h int64, lastTimestamp 
 }
 
 // GetLast24hStats retrieves average statistics for the last 24 hours
-func (db *DB) GetLast24hStats() (*models.DashboardStats24h, error) {
+func (p *PostgresDB) GetLast24hStats() (*models.DashboardStats24h, error) {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
@@ -460,7 +520,7 @@ func (db *DB) GetLast24hStats() (*models.DashboardStats24h, error) {
 
 	stats := &models.DashboardStats24h{}
 
-	query := fmt.Sprintf(`
+	query := `
 		SELECT
 			COALESCE(AVG(download_bandwidth) / 125000.0, 0) as avg_download_mbps,
 			COALESCE(AVG(upload_bandwidth) / 125000.0, 0) as avg_upload_mbps,
@@ -468,10 +528,10 @@ func (db *DB) GetLast24hStats() (*models.DashboardStats24h, error) {
 			COALESCE(AVG(ping_jitter), 0) as avg_jitter_ms,
 			COALESCE(AVG(packet_loss), 0) as avg_packet_loss
 		FROM measurements
-		WHERE timestamp >= %s
-	`, db.getPlaceholder(1))
+		WHERE timestamp >= $1
+	`
 
-	err := db.QueryRowContext(ctx, query, past24h).Scan(
+	err := p.db.QueryRowContext(ctx, query, past24h).Scan(
 		&stats.DownloadMbps,
 		&stats.UploadMbps,
 		&stats.PingMs,
@@ -487,16 +547,21 @@ func (db *DB) GetLast24hStats() (*models.DashboardStats24h, error) {
 }
 
 // CleanupOldMeasurements removes measurements older than the retention period
-func (db *DB) CleanupOldMeasurements(retentionDays int) (int64, error) {
+func (p *PostgresDB) CleanupOldMeasurements(retentionDays int) (int64, error) {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
-	cutoffDate := time.Now().AddDate(0, 0, -retentionDays)
+	cutoffDate := time.Now().UTC().AddDate(0, 0, -retentionDays)
 
-	result, err := db.ExecContext(ctx,
-		"DELETE FROM measurements WHERE timestamp < $1",
-		cutoffDate,
-	)
+	query, args, err := p.builder.
+		Delete("measurements").
+		Where(sq.Lt{"timestamp": cutoffDate}).
+		ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("failed to build delete query: %w", err)
+	}
+
+	result, err := p.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return 0, fmt.Errorf("failed to cleanup old measurements: %w", err)
 	}
@@ -513,16 +578,21 @@ func (db *DB) CleanupOldMeasurements(retentionDays int) (int64, error) {
 }
 
 // CleanupOldFailedMeasurements removes failed measurements older than the retention period
-func (db *DB) CleanupOldFailedMeasurements(retentionDays int) (int64, error) {
+func (p *PostgresDB) CleanupOldFailedMeasurements(retentionDays int) (int64, error) {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
 	cutoffDate := time.Now().UTC().AddDate(0, 0, -retentionDays)
 
-	result, err := db.ExecContext(ctx,
-		"DELETE FROM failed_measurements WHERE timestamp < $1",
-		cutoffDate,
-	)
+	query, args, err := p.builder.
+		Delete("failed_measurements").
+		Where(sq.Lt{"timestamp": cutoffDate}).
+		ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("failed to build delete query: %w", err)
+	}
+
+	result, err := p.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return 0, fmt.Errorf("failed to cleanup old failed measurements: %w", err)
 	}

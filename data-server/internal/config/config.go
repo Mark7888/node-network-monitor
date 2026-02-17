@@ -105,7 +105,7 @@ func Load() (*Config, error) {
 	flag.IntVar(&cfg.Database.Port, "db-port", getEnvInt("DB_PORT", 5432), "PostgreSQL port")
 	flag.StringVar(&cfg.Database.User, "db-user", getEnv("DB_USER", "speedtest"), "PostgreSQL user")
 	flag.StringVar(&cfg.Database.Password, "db-password", getEnv("DB_PASSWORD", ""), "PostgreSQL password")
-	flag.StringVar(&cfg.Database.Name, "db-name", getEnv("DB_NAME", "speedtest"), "PostgreSQL database name")
+	flag.StringVar(&cfg.Database.Name, "db-name", getEnv("DB_NAME", "speedtest2"), "PostgreSQL database name")
 	flag.StringVar(&cfg.Database.SSLMode, "db-sslmode", getEnv("DB_SSLMODE", "require"), "PostgreSQL SSL mode")
 	flag.IntVar(&cfg.Database.MaxConnections, "db-max-connections", getEnvInt("DB_MAX_CONNECTIONS", 25), "Max database connections")
 	flag.IntVar(&cfg.Database.MaxIdle, "db-max-idle", getEnvInt("DB_MAX_IDLE", 5), "Max idle connections")

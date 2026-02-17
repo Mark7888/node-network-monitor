@@ -15,11 +15,11 @@ import (
 
 // APIKeyHandler handles API key management endpoints
 type APIKeyHandler struct {
-	db *db.DB
+	db db.Database
 }
 
 // NewAPIKeyHandler creates a new API key handler
-func NewAPIKeyHandler(database *db.DB) *APIKeyHandler {
+func NewAPIKeyHandler(database db.Database) *APIKeyHandler {
 	return &APIKeyHandler{
 		db: database,
 	}

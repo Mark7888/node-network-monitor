@@ -14,7 +14,7 @@ import (
 )
 
 // APIKeyAuth middleware validates API keys for node endpoints
-func APIKeyAuth(database *db.DB) gin.HandlerFunc {
+func APIKeyAuth(database db.Database) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {

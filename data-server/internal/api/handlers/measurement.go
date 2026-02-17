@@ -14,11 +14,11 @@ import (
 
 // MeasurementHandler handles measurement-related endpoints
 type MeasurementHandler struct {
-	db *db.DB
+	db db.Database
 }
 
 // NewMeasurementHandler creates a new measurement handler
-func NewMeasurementHandler(database *db.DB) *MeasurementHandler {
+func NewMeasurementHandler(database db.Database) *MeasurementHandler {
 	return &MeasurementHandler{
 		db: database,
 	}

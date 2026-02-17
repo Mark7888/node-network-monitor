@@ -1,4 +1,4 @@
-package db
+package sqlite
 
 import (
 	"database/sql"
@@ -8,29 +8,31 @@ import (
 	"mark7888/speedtest-data-server/internal/logger"
 	"mark7888/speedtest-data-server/pkg/models"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
 // UpsertNode creates or updates a node (used for alive signals and self-registration)
-func (db *DB) UpsertNode(nodeID uuid.UUID, nodeName string) error {
+func (s *SQLiteDB) UpsertNode(nodeID uuid.UUID, nodeName string) error {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
 	now := time.Now().UTC()
-	nowSQL := db.getNowSQL()
-	query := fmt.Sprintf(`
-		INSERT INTO nodes (id, name, first_seen, last_seen, last_alive, status)
-		VALUES ($1, $2, %s, %s, %s, 'active')
-		ON CONFLICT (id) DO UPDATE SET
-			name = EXCLUDED.name,
-			last_seen = $3,
-			last_alive = $3,
-			status = 'active',
-			updated_at = $3
-	`, nowSQL, nowSQL, nowSQL)
 
-	_, err := db.ExecContext(ctx, query, nodeID, nodeName, now)
+	// SQLite UPSERT using ON CONFLICT
+	query := `
+		INSERT INTO nodes (id, name, first_seen, last_seen, last_alive, status)
+		VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'active')
+		ON CONFLICT (id) DO UPDATE SET
+			name = excluded.name,
+			last_seen = ?,
+			last_alive = ?,
+			status = 'active',
+			updated_at = ?
+	`
+
+	_, err := s.db.ExecContext(ctx, query, nodeID.String(), nodeName, now, now, now)
 	if err != nil {
 		return fmt.Errorf("failed to upsert node: %w", err)
 	}
@@ -39,19 +41,24 @@ func (db *DB) UpsertNode(nodeID uuid.UUID, nodeName string) error {
 }
 
 // GetNodeByID retrieves a node by ID
-func (db *DB) GetNodeByID(nodeID uuid.UUID) (*models.Node, error) {
+func (s *SQLiteDB) GetNodeByID(nodeID uuid.UUID) (*models.Node, error) {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
-	query := `
-		SELECT id, name, first_seen, last_seen, last_alive, status, created_at, updated_at
-		FROM nodes
-		WHERE id = $1
-	`
+	query, args, err := s.builder.
+		Select("id", "name", "first_seen", "last_seen", "last_alive", "status", "created_at", "updated_at").
+		From("nodes").
+		Where(sq.Eq{"id": nodeID.String()}).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build select query: %w", err)
+	}
 
 	var node models.Node
-	err := db.QueryRowContext(ctx, query, nodeID).Scan(
-		&node.ID,
+	var idStr string
+
+	err = s.db.QueryRowContext(ctx, query, args...).Scan(
+		&idStr,
 		&node.Name,
 		&node.FirstSeen,
 		&node.LastSeen,
@@ -68,53 +75,52 @@ func (db *DB) GetNodeByID(nodeID uuid.UUID) (*models.Node, error) {
 		return nil, fmt.Errorf("failed to get node: %w", err)
 	}
 
+	node.ID, _ = uuid.Parse(idStr)
+
 	return &node, nil
 }
 
 // GetAllNodes retrieves all nodes with optional status filter
-func (db *DB) GetAllNodes(status string, page, limit int) ([]models.Node, int, error) {
+func (s *SQLiteDB) GetAllNodes(status string, page, limit int) ([]models.Node, int, error) {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
-	// Build query based on status filter
-	var countQuery, selectQuery string
-	var args []interface{}
+	// Build base query
+	selectQuery := s.builder.
+		Select("id", "name", "first_seen", "last_seen", "last_alive", "status", "created_at", "updated_at").
+		From("nodes")
 
+	countQuery := s.builder.Select("COUNT(*)").From("nodes")
+
+	// Apply status filter if provided
 	if status != "" {
-		countQuery = "SELECT COUNT(*) FROM nodes WHERE status = $1"
-		selectQuery = `
-			SELECT id, name, first_seen, last_seen, last_alive, status, created_at, updated_at
-			FROM nodes
-			WHERE status = $1
-			ORDER BY last_alive DESC
-			LIMIT $2 OFFSET $3
-		`
-		args = []interface{}{status, limit, (page - 1) * limit}
-	} else {
-		countQuery = "SELECT COUNT(*) FROM nodes"
-		selectQuery = `
-			SELECT id, name, first_seen, last_seen, last_alive, status, created_at, updated_at
-			FROM nodes
-			ORDER BY last_alive DESC
-			LIMIT $1 OFFSET $2
-		`
-		args = []interface{}{limit, (page - 1) * limit}
+		selectQuery = selectQuery.Where(sq.Eq{"status": status})
+		countQuery = countQuery.Where(sq.Eq{"status": status})
 	}
 
 	// Get total count
-	var total int
-	var err error
-	if status != "" {
-		err = db.QueryRowContext(ctx, countQuery, status).Scan(&total)
-	} else {
-		err = db.QueryRowContext(ctx, countQuery).Scan(&total)
+	countSQL, countArgs, err := countQuery.ToSql()
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to build count query: %w", err)
 	}
+
+	var total int
+	err = s.db.QueryRowContext(ctx, countSQL, countArgs...).Scan(&total)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count nodes: %w", err)
 	}
 
-	// Get nodes
-	rows, err := db.QueryContext(ctx, selectQuery, args...)
+	// Get nodes with pagination
+	selectSQL, selectArgs, err := selectQuery.
+		OrderBy("last_alive DESC").
+		Limit(uint64(limit)).
+		Offset(uint64((page - 1) * limit)).
+		ToSql()
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to build select query: %w", err)
+	}
+
+	rows, err := s.db.QueryContext(ctx, selectSQL, selectArgs...)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to query nodes: %w", err)
 	}
@@ -123,8 +129,10 @@ func (db *DB) GetAllNodes(status string, page, limit int) ([]models.Node, int, e
 	var nodes []models.Node
 	for rows.Next() {
 		var node models.Node
+		var idStr string
+
 		err := rows.Scan(
-			&node.ID,
+			&idStr,
 			&node.Name,
 			&node.FirstSeen,
 			&node.LastSeen,
@@ -136,6 +144,8 @@ func (db *DB) GetAllNodes(status string, page, limit int) ([]models.Node, int, e
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to scan node: %w", err)
 		}
+
+		node.ID, _ = uuid.Parse(idStr)
 		nodes = append(nodes, node)
 	}
 
@@ -143,12 +153,12 @@ func (db *DB) GetAllNodes(status string, page, limit int) ([]models.Node, int, e
 }
 
 // GetNodeWithStats retrieves a node with statistics
-func (db *DB) GetNodeWithStats(nodeID uuid.UUID) (*models.NodeWithStats, error) {
+func (s *SQLiteDB) GetNodeWithStats(nodeID uuid.UUID) (*models.NodeWithStats, error) {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
 	// Get node
-	node, err := db.GetNodeByID(nodeID)
+	node, err := s.GetNodeByID(nodeID)
 	if err != nil {
 		return nil, err
 	}
@@ -158,26 +168,38 @@ func (db *DB) GetNodeWithStats(nodeID uuid.UUID) (*models.NodeWithStats, error) 
 	}
 
 	// Get measurement count
-	err = db.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM measurements WHERE node_id = $1",
-		nodeID,
-	).Scan(&nodeWithStats.MeasurementCount)
+	countQuery, countArgs, err := s.builder.
+		Select("COUNT(*)").
+		From("measurements").
+		Where(sq.Eq{"node_id": nodeID.String()}).
+		ToSql()
 	if err != nil {
-		logger.Log.Warn("Failed to get measurement count", zap.Error(err))
+		logger.Log.Warn("Failed to build measurement count query", zap.Error(err))
+	} else {
+		err = s.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&nodeWithStats.MeasurementCount)
+		if err != nil {
+			logger.Log.Warn("Failed to get measurement count", zap.Error(err))
+		}
 	}
 
 	// Get failed test count
-	err = db.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM failed_measurements WHERE node_id = $1",
-		nodeID,
-	).Scan(&nodeWithStats.FailedTestCount)
+	failedCountQuery, failedCountArgs, err := s.builder.
+		Select("COUNT(*)").
+		From("failed_measurements").
+		Where(sq.Eq{"node_id": nodeID.String()}).
+		ToSql()
 	if err != nil {
-		logger.Log.Warn("Failed to get failed test count", zap.Error(err))
+		logger.Log.Warn("Failed to build failed count query", zap.Error(err))
+	} else {
+		err = s.db.QueryRowContext(ctx, failedCountQuery, failedCountArgs...).Scan(&nodeWithStats.FailedTestCount)
+		if err != nil {
+			logger.Log.Warn("Failed to get failed test count", zap.Error(err))
+		}
 	}
 
 	// Get statistics
 	stats := &models.NodeStatistics{}
-	err = db.QueryRowContext(ctx, `
+	statsQuery := `
 		SELECT
 			COALESCE(AVG(download_bandwidth) / 125000.0, 0) as avg_download_mbps,
 			COALESCE(AVG(upload_bandwidth) / 125000.0, 0) as avg_upload_mbps,
@@ -185,8 +207,9 @@ func (db *DB) GetNodeWithStats(nodeID uuid.UUID) (*models.NodeWithStats, error) 
 			COALESCE(AVG(ping_jitter), 0) as avg_jitter_ms,
 			COALESCE(AVG(packet_loss), 0) as avg_packet_loss
 		FROM measurements
-		WHERE node_id = $1
-	`, nodeID).Scan(
+		WHERE node_id = ?
+	`
+	err = s.db.QueryRowContext(ctx, statsQuery, nodeID.String()).Scan(
 		&stats.AvgDownloadMbps,
 		&stats.AvgUploadMbps,
 		&stats.AvgPingMs,
@@ -199,11 +222,12 @@ func (db *DB) GetNodeWithStats(nodeID uuid.UUID) (*models.NodeWithStats, error) 
 
 	// Get success rate for last 24 hours
 	past24h := time.Now().UTC().Add(-24 * time.Hour)
-	err = db.QueryRowContext(ctx, `
+	successRateQuery := `
 		SELECT
-			(SELECT COUNT(*) FROM measurements WHERE node_id = $1 AND timestamp >= $2) as success_count,
-			(SELECT COUNT(*) FROM failed_measurements WHERE node_id = $1 AND timestamp >= $2) as failed_count
-	`, nodeID, past24h).Scan(
+			(SELECT COUNT(*) FROM measurements WHERE node_id = ? AND timestamp >= ?) as success_count,
+			(SELECT COUNT(*) FROM failed_measurements WHERE node_id = ? AND timestamp >= ?) as failed_count
+	`
+	err = s.db.QueryRowContext(ctx, successRateQuery, nodeID.String(), past24h, nodeID.String(), past24h).Scan(
 		&stats.SuccessCount24h,
 		&stats.FailedCount24h,
 	)
@@ -223,17 +247,18 @@ func (db *DB) GetNodeWithStats(nodeID uuid.UUID) (*models.NodeWithStats, error) 
 
 	// Get latest measurement
 	latestMeasurement := &models.MeasurementSummary{}
-	err = db.QueryRowContext(ctx, `
+	latestQuery := `
 		SELECT
 			timestamp,
 			COALESCE(download_bandwidth / 125000.0, 0) as download_mbps,
 			COALESCE(upload_bandwidth / 125000.0, 0) as upload_mbps,
 			COALESCE(ping_latency, 0) as ping_ms
 		FROM measurements
-		WHERE node_id = $1
+		WHERE node_id = ?
 		ORDER BY timestamp DESC
 		LIMIT 1
-	`, nodeID).Scan(
+	`
+	err = s.db.QueryRowContext(ctx, latestQuery, nodeID.String()).Scan(
 		&latestMeasurement.Timestamp,
 		&latestMeasurement.DownloadMbps,
 		&latestMeasurement.UploadMbps,
@@ -249,7 +274,7 @@ func (db *DB) GetNodeWithStats(nodeID uuid.UUID) (*models.NodeWithStats, error) 
 }
 
 // UpdateNodeStatus updates the status of nodes based on last_alive timestamp
-func (db *DB) UpdateNodeStatus(aliveTimeout, inactiveTimeout time.Duration) error {
+func (s *SQLiteDB) UpdateNodeStatus(aliveTimeout, inactiveTimeout time.Duration) error {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
@@ -257,16 +282,14 @@ func (db *DB) UpdateNodeStatus(aliveTimeout, inactiveTimeout time.Duration) erro
 	unreachableThreshold := now.Add(-aliveTimeout)
 	inactiveThreshold := now.Add(-inactiveTimeout)
 
-	nowSQL := db.getNowSQL()
-
 	// Update to unreachable
-	query1 := fmt.Sprintf(`
+	query1 := `
 		UPDATE nodes
-		SET status = 'unreachable', updated_at = %s
-		WHERE status = 'active' AND last_alive < $1
-	`, nowSQL)
+		SET status = 'unreachable', updated_at = CURRENT_TIMESTAMP
+		WHERE status = 'active' AND datetime(last_alive) < datetime(?)
+	`
 
-	result, err := db.ExecContext(ctx, query1, unreachableThreshold)
+	result, err := s.db.ExecContext(ctx, query1, unreachableThreshold)
 	if err != nil {
 		return fmt.Errorf("failed to update unreachable nodes: %w", err)
 	}
@@ -277,13 +300,13 @@ func (db *DB) UpdateNodeStatus(aliveTimeout, inactiveTimeout time.Duration) erro
 	}
 
 	// Update to inactive
-	query2 := fmt.Sprintf(`
+	query2 := `
 		UPDATE nodes
-		SET status = 'inactive', updated_at = %s
-		WHERE status IN ('active', 'unreachable') AND last_alive < $1
-	`, nowSQL)
+		SET status = 'inactive', updated_at = CURRENT_TIMESTAMP
+		WHERE status IN ('active', 'unreachable') AND datetime(last_alive) < datetime(?)
+	`
 
-	result, err = db.ExecContext(ctx, query2, inactiveThreshold)
+	result, err = s.db.ExecContext(ctx, query2, inactiveThreshold)
 	if err != nil {
 		return fmt.Errorf("failed to update inactive nodes: %w", err)
 	}
@@ -297,19 +320,21 @@ func (db *DB) UpdateNodeStatus(aliveTimeout, inactiveTimeout time.Duration) erro
 }
 
 // GetNodeCounts returns counts of nodes by status
-func (db *DB) GetNodeCounts() (total, active, unreachable, inactive int, err error) {
+func (s *SQLiteDB) GetNodeCounts() (total, active, unreachable, inactive int, err error) {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
-	err = db.QueryRowContext(ctx, `
+	// SQLite doesn't support FILTER, so we use CASE WHEN
+	query := `
 		SELECT
 			COUNT(*) as total,
-			COUNT(*) FILTER (WHERE status = 'active') as active,
-			COUNT(*) FILTER (WHERE status = 'unreachable') as unreachable,
-			COUNT(*) FILTER (WHERE status = 'inactive') as inactive
+			SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
+			SUM(CASE WHEN status = 'unreachable' THEN 1 ELSE 0 END) as unreachable,
+			SUM(CASE WHEN status = 'inactive' THEN 1 ELSE 0 END) as inactive
 		FROM nodes
-	`).Scan(&total, &active, &unreachable, &inactive)
+	`
 
+	err = s.db.QueryRowContext(ctx, query).Scan(&total, &active, &unreachable, &inactive)
 	if err != nil {
 		return 0, 0, 0, 0, fmt.Errorf("failed to get node counts: %w", err)
 	}

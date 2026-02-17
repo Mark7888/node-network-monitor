@@ -14,11 +14,11 @@ import (
 
 // NodeHandler handles node-related endpoints
 type NodeHandler struct {
-	db *db.DB
+	db db.Database
 }
 
 // NewNodeHandler creates a new node handler
-func NewNodeHandler(database *db.DB) *NodeHandler {
+func NewNodeHandler(database db.Database) *NodeHandler {
 	return &NodeHandler{
 		db: database,
 	}
