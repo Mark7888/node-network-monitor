@@ -1,0 +1,82 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: network-monitor-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: network-monitor
+      PGDATA: /var/lib/postgresql/data/pgdata
+    env_file:
+      - ./.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U speedtest"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  network-monitor-data-server:
+    image: mark7888/network-monitor-data-server:latest
+    container_name: network-monitor-data-server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8080
+      SERVER_MODE: release
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: network-monitor
+      DB_SSLMODE: disable
+      LOG_OUTPUT: /app/logs/data-server.log
+      LOG_LEVEL: info
+      LOG_FORMAT: json
+      LOG_OUTPUT_CONSOLE: true
+    env_file:
+      - ./.env
+    ports:
+      - "8080:8080"
+    volumes:
+      - data_server_logs:/app/logs
+
+  network-monitor-frontend:
+    image: mark7888/network-monitor-ui:latest
+    container_name: network-monitor-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DEBUG: false
+    env_file:
+      - .env
+
+  network-monitor-node:
+    image: mark7888/network-monitor-node:latest
+    container_name: network-monitor-node
+    restart: unless-stopped
+    depends_on:
+      - network-monitor-data-server
+    environment:
+      SPEEDTEST_SERVER_URL: http://network-monitor-data-server:8080
+      SPEEDTEST_DB_PATH: /app/data/speedtest.db
+      SPEEDTEST_LOG_OUTPUT: /app/logs/speedtest-node.log
+      SPEEDTEST_LOG_LEVEL: info
+      SPEEDTEST_LOG_FORMAT: json
+      SPEEDTEST_LOG_OUTPUT_CONSOLE: true
+    env_file:
+      - .env
+    volumes:
+      - speedtest_node_data:/app/data
+      - speedtest_node_logs:/app/logs
+
+
+volumes:
+  postgres_data:
+  data_server_logs:
+  speedtest_node_data:
+  speedtest_node_logs:
