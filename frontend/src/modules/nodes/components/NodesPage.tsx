@@ -22,7 +22,7 @@ export default function NodesPage() {
   // Auto-refresh
   useAutoRefresh(fetchNodes, env.refreshInterval);
 
-  if (isLoading && nodes.length === 0) {
+  if (isLoading && (!nodes || nodes.length === 0)) {
     return <Spinner message="Loading nodes..." />;
   }
 
@@ -41,7 +41,7 @@ export default function NodesPage() {
       </div>
 
       {/* Nodes Grid */}
-      {nodes.length === 0 ? (
+      {!nodes || nodes.length === 0 ? (
         <EmptyState
           title="No nodes found"
           message="No speedtest nodes have registered yet. Deploy a node to start collecting measurements."

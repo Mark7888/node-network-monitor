@@ -26,7 +26,7 @@ export const useNodesStore = create<NodesStore>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const data = await nodeService.getNodes();
-      set({ nodes: data.nodes, isLoading: false });
+      set({ nodes: data.nodes || [], isLoading: false });
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
       set({
