@@ -4,16 +4,17 @@ services:
     container_name: network-monitor-db
     restart: unless-stopped
     environment:
+      POSTGRES_USER: speedtest
       POSTGRES_DB: network-monitor
       PGDATA: /var/lib/postgresql/data/pgdata
     env_file:
-      - ./.env
+      - .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U speedtest"]
+      test: ["CMD-SHELL", "pg_isready -U speedtest -d network-monitor"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -31,6 +32,7 @@ services:
       SERVER_MODE: release
       DB_HOST: postgres
       DB_PORT: 5432
+      DB_USER: speedtest
       DB_NAME: network-monitor
       DB_SSLMODE: disable
       LOG_OUTPUT: /app/logs/data-server.log
@@ -38,7 +40,7 @@ services:
       LOG_FORMAT: json
       LOG_OUTPUT_CONSOLE: true
     env_file:
-      - ./.env
+      - .env
     ports:
       - "8080:8080"
     volumes:
