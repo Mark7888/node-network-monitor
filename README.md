@@ -1,197 +1,151 @@
 # Network Speed Measurement System
 
-A distributed network monitoring system that collects internet speed measurements from multiple nodes, stores data centrally, and provides an interactive web dashboard for visualization and analysis.
+This is a simple system to monitor your internet speed over time. It runs speedtests automatically, stores the results, and shows you nice charts in a web dashboard.
 
-## 🎯 Overview
+## What does it do?
 
-This system enables continuous monitoring of network performance across multiple locations. Deploy lightweight measurement nodes anywhere, collect data in a central server, and visualize trends through a web interface.
+The system has a few parts that work together:
+- **Speedtest nodes** that run speed tests every 10 minutes (configurable)
+- A **data server** that collects and stores all the measurements
+- A **web dashboard** where you can see charts and stats
+- Everything runs in Docker containers, so it's easy to set up
 
-**Perfect for:**
-- Home network monitoring across different locations
-- ISP performance tracking and accountability
-- Network diagnostics and troubleshooting
-- Historical bandwidth analysis
-- Multi-site network comparison
+It's useful if you want to track your ISP's performance, see when your internet is slow, or just keep an eye on your connection quality.
 
-## ✨ Key Features
+## Getting Started
 
-- **Automated Measurements**: Configurable cron-based speedtest execution (default: every 10 minutes)
-- **Multi-Node Support**: Deploy unlimited measurement nodes with automatic registration
-- **Comprehensive Metrics**: Download/upload speeds, ping latency, jitter, packet loss, ISP info
-- **Local Resilience**: Nodes store data locally and sync when connected
-- **Secure Authentication**: API keys for nodes, JWT tokens for dashboard access
-- **Interactive Dashboard**: Real-time charts with historical data visualization
-- **Self-Hosted**: Complete Docker deployment, no external dependencies
-- **Data Retention**: Configurable retention policies for both nodes and server
+### 1. Install Docker
 
-## 🏗️ Architecture
+If you don't have Docker and Docker Compose installed yet:
 
-The system consists of three main components that work together:
+- Install Docker: https://docs.docker.com/engine/install/
+- Install Docker Compose: https://docs.docker.com/compose/install/
 
-```
-┌─────────────────────────────────────────────┐
-│             Speedtest Nodes                 │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │  Node 1  │  │  Node 2  │  │  Node N  │   │
-│  │  Go +    │  │  Go +    │  │  Go +    │   │
-│  │  SQLite  │  │  SQLite  │  │  SQLite  │   │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘   │
-└───────┼─────────────┼─────────────┼─────────┘
-        │             │             │
-        └─────────────┼─────────────┘
-                      │ HTTPS + API Key
-                      ▼
-        ┌─────────────────────────┐
-        │     Data Server         │
-        │   Go + Gin Framework    │
-        │   PostgreSQL / SQLite   │
-        └────────────┬────────────┘
-                     │ REST API + JWT
-                     ▼
-        ┌─────────────────────────┐
-        │    Frontend Dashboard   │
-        │   React + TypeScript    │
-        │   ECharts + TailwindCSS │
-        └─────────────────────────┘
-```
+Make sure both are working by running `docker --version` and `docker compose version`
 
-## 📦 Components
+### 2. Configure the application
 
-### 1. [Speedtest Node](./speedtest-node/)
-Lightweight measurement collectors that run Ookla Speedtest CLI on a schedule.
-
-- **Technology**: Go 1.24+, SQLite3, Cron scheduler
-- **Features**: Automated testing, local storage, batch sync, retry logic
-- **Deployment**: Docker or standalone binary
-- **Documentation**: [speedtest-node/README.md](./speedtest-node/README.md)
-
-### 2. [Data Server](./data-server/)
-Central API server that collects measurements and provides data access.
-
-- **Technology**: Go 1.24+, Gin framework, PostgreSQL/SQLite
-- **Features**: REST API, node management, API key system, JWT auth
-- **Deployment**: Docker Compose with PostgreSQL or standalone
-- **Documentation**: [data-server/README.md](./data-server/README.md)
-
-### 3. [Frontend Dashboard](./frontend/)
-Web interface for visualizing measurements and managing the system.
-
-- **Technology**: React 18+, TypeScript, Vite, TailwindCSS, Apache ECharts
-- **Features**: Interactive charts, node management, API key admin, time range filters
-- **Deployment**: Docker with Nginx or development server
-- **Documentation**: [frontend/README.md](./frontend/README.md) *(coming soon)*
-
-## � Quick Start
-
-### Prerequisites
-- Docker & Docker Compose (recommended)
-- Or: Go 1.24+, PostgreSQL 15+, Node.js 18+ (for manual setup)
-- Ookla Speedtest CLI (for nodes)
-
-### 1. Deploy the Data Server
+Copy the example environment file and edit it with your settings:
 
 ```bash
-cd data-server
-cp .env.example .env  # Edit with your passwords and secrets
+cp .env.example .env
+nano .env  # or use your favorite editor
+```
+
+You need to set these values in the `.env` file:
+
+```bash
+# Database password (choose something secure)
+POSTGRES_PASSWORD=your_secure_password_here
+DB_PASSWORD=your_secure_password_here
+
+# Admin credentials for the dashboard
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=your_admin_password
+
+# JWT secret (use a random string)
+JWT_SECRET=your_random_secret_key
+
+# Node configuration
+SPEEDTEST_NODE_NAME=my-home-node
+SPEEDTEST_SERVER_API_KEY=temporary_key  # We'll generate a real one after starting
+```
+
+The other settings have sensible defaults, but you can adjust them if needed.
+
+### 3. Run everything
+
+Start all the services with Docker Compose:
+
+```bash
 docker-compose up -d
 ```
 
-The server will start at `http://localhost:8080`. See [data-server/README.md](./data-server/README.md) for detailed configuration.
+This will start:
+- PostgreSQL database (port 5432)
+- Data server API (port 8080)
+- Web dashboard (port 3000)
+- A speedtest node
 
-### 2. Create an API Key
+Wait a minute for everything to start up, then check if it's running:
 
-First, login to get a JWT token:
+```bash
+docker-compose ps
+```
+
+### 4. Generate an API key for the node
+
+The speedtest node needs a proper API key to send data to the server. First, get a login token:
+
 ```bash
 curl -X POST http://localhost:8080/api/v1/admin/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"your-password"}'
+  -d '{"username":"admin","password":"your_admin_password"}'
 ```
 
-Then create an API key for your node:
+Copy the token from the response, then create an API key:
+
 ```bash
 curl -X POST http://localhost:8080/api/v1/admin/api-keys \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
   -H "Content-Type: application/json" \
-  -d '{"name":"My First Node"}'
+  -d '{"name":"my-home-node"}'
 ```
 
-Save the returned API key securely.
-
-### 3. Deploy Speedtest Nodes
+Copy the API key from the response, add it to your `.env` file under `SPEEDTEST_SERVER_API_KEY`, and restart the node:
 
 ```bash
-cd speedtest-node
-export NODE_NAME="home-node"
-export SERVER_URL="http://localhost:8080"
-export API_KEY="your-api-key-here"
+docker-compose restart network-monitor-node
+```
+
+### 5. Open the dashboard
+
+Go to http://localhost:3000 in your browser and log in with the admin credentials you set up. You should start seeing speedtest results after a few minutes.
+
+## Managing the system
+
+**View logs:**
+```bash
+docker-compose logs -f  # all services
+docker-compose logs -f network-monitor-node  # just the speedtest node
+```
+
+**Stop everything:**
+```bash
+docker-compose down
+```
+
+**Update to latest version:**
+```bash
+docker-compose pull
 docker-compose up -d
 ```
 
-Deploy additional nodes by repeating with different `NODE_NAME` values. See [speedtest-node/README.md](./speedtest-node/README.md) for more options.
+**Add more nodes:**
+You can run additional nodes on other computers or networks by using the individual docker-compose files in the `speedtest-node/` directory. Each node needs its own API key.
 
-### 4. Start the Dashboard
+## Troubleshooting
 
-```bash
-cd frontend
-export VITE_API_URL="http://localhost:8080"
-npm install && npm run dev
-# Or use Docker: docker-compose up -d
-```
+**Can't connect to the dashboard?**
+- Make sure all containers are running: `docker-compose ps`
+- Check the logs: `docker-compose logs`
 
-Access the dashboard at `http://localhost:3000` and login with your admin credentials.
+**No data showing up?**
+- Check if the node is running: `docker-compose logs network-monitor-node`
+- Make sure you've set a valid API key in the `.env` file
+- The first measurement takes about 10 minutes to appear
 
-## 📖 Documentation
+**Want to change settings?**
+- Edit the `.env` file
+- Run `docker-compose up -d` to apply changes
 
-Each component has comprehensive documentation in its directory:
+## More Information
 
-- **[Speedtest Node](./speedtest-node/README.md)** - Node setup, configuration, troubleshooting
-- **[Data Server](./data-server/README.md)** - API endpoints, database schema, deployment
-- **[Frontend](./frontend/README.md)** - Dashboard features, customization *(coming soon)*
+Each component has its own README with more details:
+- [data-server/README.md](./data-server/README.md) - API documentation and advanced config
+- [speedtest-node/README.md](./speedtest-node/README.md) - Node setup and troubleshooting
+- [frontend/README.md](./frontend/README.md) - Dashboard features
 
-## 🔒 Security Notes
+## License
 
-- Change default admin credentials immediately
-- Use HTTPS/TLS in production deployments
-- Store API keys securely, never commit to version control
-- Enable PostgreSQL SSL connections for production
-- Use strong passwords and JWT secrets
-- Keep Docker images and dependencies updated
-
-See component READMEs for detailed security configurations.
-
-## 📊 How It Works
-
-1. **Measurement**: Nodes run Ookla Speedtest on a cron schedule (default: every 10 minutes)
-2. **Local Storage**: Results stored in local SQLite database for resilience
-3. **Sync**: Nodes batch-send measurements to the data server (up to 20 at a time)
-4. **Keepalive**: Nodes send heartbeat signals every 60 seconds
-5. **Status Tracking**: Server monitors node health based on heartbeat signals
-6. **Visualization**: Dashboard fetches aggregated data and displays interactive charts
-7. **Retention**: Old data automatically cleaned up based on retention policies
-
-## 🛠️ Development
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/network-measure-app.git
-cd network-measure-app
-
-# Each component can be developed independently
-cd speedtest-node && go run ./cmd/speedtest-node
-cd data-server && go run ./cmd/data-server
-cd frontend && npm run dev
-```
-
-## 📄 License
-
-This project is licensed under the terms specified in the LICENSE file.
-
-## 🙏 Acknowledgments
-
-- [Ookla Speedtest CLI](https://www.speedtest.net/apps/cli) for network measurements
-- [Apache ECharts](https://echarts.apache.org/) for powerful data visualization
-- Open source community for the excellent tools and libraries
-
----
-
-**Built for network enthusiasts who want to track their internet performance** 📈
+See the LICENSE file for details.
