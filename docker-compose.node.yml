@@ -1,0 +1,20 @@
+services:
+  network-monitor-node:
+    image: mark7888/network-monitor-node:latest
+    container_name: network-monitor-node
+    restart: unless-stopped
+    environment:
+      SPEEDTEST_DB_PATH: /app/data/speedtest.db
+      SPEEDTEST_LOG_OUTPUT: /app/logs/speedtest-node.log
+      SPEEDTEST_LOG_LEVEL: info
+      SPEEDTEST_LOG_FORMAT: json
+      SPEEDTEST_LOG_OUTPUT_CONSOLE: true
+    env_file:
+      - .env
+    volumes:
+      - speedtest_node_data:/app/data
+      - speedtest_node_logs:/app/logs
+
+volumes:
+  speedtest_node_data:
+  speedtest_node_logs:

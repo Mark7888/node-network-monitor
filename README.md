@@ -75,16 +75,26 @@ docker-compose ps
 
 ### 4. Generate an API key for the node
 
-The speedtest node needs a proper API key to send data to the server. First, get a login token:
+The speedtest node needs a proper API key to send data to the server.
 
+**Easy way (using the web dashboard):**
+
+1. Open http://localhost:3000 in your browser
+2. Log in with your admin credentials
+3. Go to the API Keys section
+4. Click "New Key" and give it a name (like "my-home-node")
+5. Copy the generated API key
+
+**Alternative (using curl):**
+
+First, get a login token:
 ```bash
 curl -X POST http://localhost:8080/api/v1/admin/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"your_admin_password"}'
 ```
 
-Copy the token from the response, then create an API key:
-
+Then create an API key:
 ```bash
 curl -X POST http://localhost:8080/api/v1/admin/api-keys \
   -H "Authorization: Bearer YOUR_TOKEN_HERE" \
@@ -92,7 +102,9 @@ curl -X POST http://localhost:8080/api/v1/admin/api-keys \
   -d '{"name":"my-home-node"}'
 ```
 
-Copy the API key from the response, add it to your `.env` file under `SPEEDTEST_SERVER_API_KEY`, and restart the node:
+**After generating the key:**
+
+Add it to your `.env` file under `SPEEDTEST_SERVER_API_KEY` and restart the node:
 
 ```bash
 docker-compose restart network-monitor-node
@@ -121,8 +133,37 @@ docker-compose pull
 docker-compose up -d
 ```
 
-**Add more nodes:**
-You can run additional nodes on other computers or networks by using the individual docker-compose files in the `speedtest-node/` directory. Each node needs its own API key.
+## Running a Node on Another Device
+
+Want to monitor your internet from multiple locations? You can run just the speedtest node on other computers and have them report to your main server.
+
+### On the remote device:
+
+1. Make sure Docker is installed
+
+2. Create the required files by copying the content from this repo:
+   - Copy [docker-compose.node.yml](docker-compose.node.yml) to a new file named `docker-compose.node.yml`
+   - Copy [.env.example.node](.env.example.node) to a new file named `.env.example.node`
+
+3. Set up the configuration:
+```bash
+cp .env.example.node .env
+nano .env  # Edit with your settings
+```
+
+Fill in these required values:
+```bash
+SPEEDTEST_NODE_NAME=bedroom-node  # Give each node a unique name
+SPEEDTEST_SERVER_URL=http://your-server-ip:8080  # Your main server's address
+SPEEDTEST_SERVER_API_KEY=your_api_key_here  # Generate this from the dashboard
+```
+
+4. Start the node:
+```bash
+docker-compose -f docker-compose.node.yml up -d
+```
+
+The node will start sending measurements to your main server. Remember to create a unique API key for each node from the admin dashboard!
 
 ## Troubleshooting
 
