@@ -31,6 +31,15 @@ jobs:
         id: tag
         run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
+      - name: Set version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "VERSION=${{ steps.tag.outputs.TAG }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=development" >> $GITHUB_OUTPUT
+          fi
+
       - name: Build Data Server Image
         uses: docker/build-push-action@v5
         with:
@@ -41,6 +50,8 @@ jobs:
           tags: |
             mark7888/network-monitor-data-server:latest
             ${{ startsWith(github.ref, 'refs/tags/') && format('mark7888/network-monitor-data-server:{0}', steps.tag.outputs.TAG) || '' }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

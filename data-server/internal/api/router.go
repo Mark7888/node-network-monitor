@@ -9,6 +9,7 @@ import (
 	"mark7888/speedtest-data-server/internal/auth"
 	"mark7888/speedtest-data-server/internal/config"
 	"mark7888/speedtest-data-server/internal/db"
+	"mark7888/speedtest-data-server/internal/version"
 	"mark7888/speedtest-data-server/pkg/models"
 
 	"github.com/gin-gonic/gin"
@@ -47,7 +48,7 @@ func SetupRouter(cfg *config.Config, database db.Database, jwtManager *auth.JWTM
 			Status:        "healthy",
 			Database:      dbStatus,
 			UptimeSeconds: int64(time.Since(startTime).Seconds()),
-			Version:       "1.0.0",
+			Version:       version.Get(),
 		})
 	})
 

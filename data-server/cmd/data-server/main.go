@@ -15,6 +15,7 @@ import (
 	"mark7888/speedtest-data-server/internal/db"
 	"mark7888/speedtest-data-server/internal/logger"
 	"mark7888/speedtest-data-server/internal/services"
+	"mark7888/speedtest-data-server/internal/version"
 
 	"go.uber.org/zap"
 )
@@ -35,7 +36,7 @@ func main() {
 	defer logger.Sync()
 
 	logger.Log.Info("Starting data server",
-		zap.String("version", "1.0.0"),
+		zap.String("version", version.Get()),
 		zap.String("mode", cfg.Server.Mode),
 		zap.String("host", cfg.Server.Host),
 		zap.Int("port", cfg.Server.Port),

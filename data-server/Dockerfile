@@ -11,8 +11,11 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build application
-RUN CGO_ENABLED=1 GOOS=linux go build -o data-server ./cmd/data-server
+# Accept version as build argument (defaults to "development")
+ARG VERSION=development
+
+# Build application with version
+RUN CGO_ENABLED=1 GOOS=linux go build -ldflags "-X mark7888/speedtest-data-server/internal/version.Version=${VERSION}" -o data-server ./cmd/data-server
 
 # Final stage
 FROM alpine:latest
