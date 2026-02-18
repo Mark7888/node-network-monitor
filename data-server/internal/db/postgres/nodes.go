@@ -239,27 +239,32 @@ func (p *PostgresDB) GetNodeWithStats(nodeID uuid.UUID) (*models.NodeWithStats, 
 
 	// Get latest measurement
 	latestMeasurement := &models.MeasurementSummary{}
-	latestQuery := `
-		SELECT
-			timestamp,
-			COALESCE(download_bandwidth / 125000.0, 0) as download_mbps,
-			COALESCE(upload_bandwidth / 125000.0, 0) as upload_mbps,
-			COALESCE(ping_latency, 0) as ping_ms
-		FROM measurements
-		WHERE node_id = $1
-		ORDER BY timestamp DESC
-		LIMIT 1
-	`
-	err = p.db.QueryRowContext(ctx, latestQuery, nodeID).Scan(
-		&latestMeasurement.Timestamp,
-		&latestMeasurement.DownloadMbps,
-		&latestMeasurement.UploadMbps,
-		&latestMeasurement.PingMs,
-	)
-	if err != nil && err != sql.ErrNoRows {
-		logger.Log.Warn("Failed to get latest measurement", zap.Error(err))
-	} else if err == nil {
-		nodeWithStats.LatestMeasurement = latestMeasurement
+	latestQuery, latestArgs, err := p.builder.
+		Select(
+			"timestamp",
+			"COALESCE(download_bandwidth / 125000.0, 0) as download_mbps",
+			"COALESCE(upload_bandwidth / 125000.0, 0) as upload_mbps",
+			"COALESCE(ping_latency, 0) as ping_ms",
+		).
+		From("measurements").
+		Where(sq.Eq{"node_id": nodeID}).
+		OrderBy("timestamp DESC").
+		Limit(1).
+		ToSql()
+	if err != nil {
+		logger.Log.Warn("Failed to build latest measurement query", zap.Error(err))
+	} else {
+		err = p.db.QueryRowContext(ctx, latestQuery, latestArgs...).Scan(
+			&latestMeasurement.Timestamp,
+			&latestMeasurement.DownloadMbps,
+			&latestMeasurement.UploadMbps,
+			&latestMeasurement.PingMs,
+		)
+		if err != nil && err != sql.ErrNoRows {
+			logger.Log.Warn("Failed to get latest measurement", zap.Error(err))
+		} else if err == nil {
+			nodeWithStats.LatestMeasurement = latestMeasurement
+		}
 	}
 
 	return nodeWithStats, nil
@@ -275,13 +280,20 @@ func (p *PostgresDB) UpdateNodeStatus(aliveTimeout, inactiveTimeout time.Duratio
 	inactiveThreshold := now.Add(-inactiveTimeout)
 
 	// Update to unreachable
-	query1 := `
-		UPDATE nodes
-		SET status = 'unreachable', updated_at = NOW()
-		WHERE status = 'active' AND last_alive < $1
-	`
+	query1, args1, err := p.builder.
+		Update("nodes").
+		Set("status", "unreachable").
+		Set("updated_at", sq.Expr("NOW()")).
+		Where(sq.And{
+			sq.Eq{"status": "active"},
+			sq.Lt{"last_alive": unreachableThreshold},
+		}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build update query: %w", err)
+	}
 
-	result, err := p.db.ExecContext(ctx, query1, unreachableThreshold)
+	result, err := p.db.ExecContext(ctx, query1, args1...)
 	if err != nil {
 		return fmt.Errorf("failed to update unreachable nodes: %w", err)
 	}
@@ -292,13 +304,23 @@ func (p *PostgresDB) UpdateNodeStatus(aliveTimeout, inactiveTimeout time.Duratio
 	}
 
 	// Update to inactive
-	query2 := `
-		UPDATE nodes
-		SET status = 'inactive', updated_at = NOW()
-		WHERE status IN ('active', 'unreachable') AND last_alive < $1
-	`
+	query2, args2, err := p.builder.
+		Update("nodes").
+		Set("status", "inactive").
+		Set("updated_at", sq.Expr("NOW()")).
+		Where(sq.And{
+			sq.Or{
+				sq.Eq{"status": "active"},
+				sq.Eq{"status": "unreachable"},
+			},
+			sq.Lt{"last_alive": inactiveThreshold},
+		}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build update query: %w", err)
+	}
 
-	result, err = p.db.ExecContext(ctx, query2, inactiveThreshold)
+	result, err = p.db.ExecContext(ctx, query2, args2...)
 	if err != nil {
 		return fmt.Errorf("failed to update inactive nodes: %w", err)
 	}
