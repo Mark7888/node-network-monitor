@@ -35,3 +35,24 @@ export async function getNodeMeasurements(
   );
   return response.data;
 }
+
+/**
+ * Archive or unarchive a node
+ */
+export async function archiveNode(nodeId: string, archived: boolean): Promise<void> {
+  await api.patch(`/api/v1/admin/nodes/${nodeId}/archive`, { archived });
+}
+
+/**
+ * Set or remove favorite status of a node
+ */
+export async function setNodeFavorite(nodeId: string, favorite: boolean): Promise<void> {
+  await api.patch(`/api/v1/admin/nodes/${nodeId}/favorite`, { favorite });
+}
+
+/**
+ * Delete a node and all its measurements
+ */
+export async function deleteNode(nodeId: string): Promise<void> {
+  await api.delete(`/api/v1/admin/nodes/${nodeId}`);
+}

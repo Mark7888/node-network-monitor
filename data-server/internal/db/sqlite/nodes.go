@@ -46,7 +46,7 @@ func (s *SQLiteDB) GetNodeByID(nodeID uuid.UUID) (*models.Node, error) {
 	defer cancel()
 
 	query, args, err := s.builder.
-		Select("id", "name", "first_seen", "last_seen", "last_alive", "status", "created_at", "updated_at").
+		Select("id", "name", "first_seen", "last_seen", "last_alive", "status", "archived", "favorite", "created_at", "updated_at").
 		From("nodes").
 		Where(sq.Eq{"id": nodeID.String()}).
 		ToSql()
@@ -56,6 +56,7 @@ func (s *SQLiteDB) GetNodeByID(nodeID uuid.UUID) (*models.Node, error) {
 
 	var node models.Node
 	var idStr string
+	var archived, favorite int
 
 	err = s.db.QueryRowContext(ctx, query, args...).Scan(
 		&idStr,
@@ -64,6 +65,8 @@ func (s *SQLiteDB) GetNodeByID(nodeID uuid.UUID) (*models.Node, error) {
 		&node.LastSeen,
 		&node.LastAlive,
 		&node.Status,
+		&archived,
+		&favorite,
 		&node.CreatedAt,
 		&node.UpdatedAt,
 	)
@@ -76,6 +79,8 @@ func (s *SQLiteDB) GetNodeByID(nodeID uuid.UUID) (*models.Node, error) {
 	}
 
 	node.ID, _ = uuid.Parse(idStr)
+	node.Archived = archived != 0
+	node.Favorite = favorite != 0
 
 	return &node, nil
 }
@@ -87,7 +92,7 @@ func (s *SQLiteDB) GetAllNodes(status string, page, limit int) ([]models.Node, i
 
 	// Build base query
 	selectQuery := s.builder.
-		Select("id", "name", "first_seen", "last_seen", "last_alive", "status", "created_at", "updated_at").
+		Select("id", "name", "first_seen", "last_seen", "last_alive", "status", "archived", "favorite", "created_at", "updated_at").
 		From("nodes")
 
 	countQuery := s.builder.Select("COUNT(*)").From("nodes")
@@ -130,6 +135,7 @@ func (s *SQLiteDB) GetAllNodes(status string, page, limit int) ([]models.Node, i
 	for rows.Next() {
 		var node models.Node
 		var idStr string
+		var archived, favorite int
 
 		err := rows.Scan(
 			&idStr,
@@ -138,6 +144,8 @@ func (s *SQLiteDB) GetAllNodes(status string, page, limit int) ([]models.Node, i
 			&node.LastSeen,
 			&node.LastAlive,
 			&node.Status,
+			&archived,
+			&favorite,
 			&node.CreatedAt,
 			&node.UpdatedAt,
 		)
@@ -146,6 +154,8 @@ func (s *SQLiteDB) GetAllNodes(status string, page, limit int) ([]models.Node, i
 		}
 
 		node.ID, _ = uuid.Parse(idStr)
+		node.Archived = archived != 0
+		node.Favorite = favorite != 0
 		nodes = append(nodes, node)
 	}
 
@@ -341,7 +351,7 @@ func (s *SQLiteDB) UpdateNodeStatus(aliveTimeout, inactiveTimeout time.Duration)
 	return nil
 }
 
-// GetNodeCounts returns counts of nodes by status
+// GetNodeCounts returns counts of nodes by status (excluding archived nodes)
 func (s *SQLiteDB) GetNodeCounts() (total, active, unreachable, inactive int, err error) {
 	ctx, cancel := withTimeout()
 	defer cancel()
@@ -354,6 +364,7 @@ func (s *SQLiteDB) GetNodeCounts() (total, active, unreachable, inactive int, er
 			SUM(CASE WHEN status = 'unreachable' THEN 1 ELSE 0 END) as unreachable,
 			SUM(CASE WHEN status = 'inactive' THEN 1 ELSE 0 END) as inactive
 		FROM nodes
+		WHERE archived = 0
 	`
 
 	err = s.db.QueryRowContext(ctx, query).Scan(&total, &active, &unreachable, &inactive)
@@ -362,4 +373,129 @@ func (s *SQLiteDB) GetNodeCounts() (total, active, unreachable, inactive int, er
 	}
 
 	return total, active, unreachable, inactive, nil
+}
+
+// ArchiveNode sets the archived status of a node
+func (s *SQLiteDB) ArchiveNode(nodeID uuid.UUID, archived bool) error {
+	ctx, cancel := withTimeout()
+	defer cancel()
+
+	archivedInt := 0
+	if archived {
+		archivedInt = 1
+	}
+
+	query, args, err := s.builder.
+		Update("nodes").
+		Set("archived", archivedInt).
+		Set("updated_at", sq.Expr("CURRENT_TIMESTAMP")).
+		Where(sq.Eq{"id": nodeID.String()}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build update query: %w", err)
+	}
+
+	result, err := s.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to archive node: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("node not found")
+	}
+
+	logger.Log.Info("Node archived status updated",
+		zap.String("node_id", nodeID.String()),
+		zap.Bool("archived", archived),
+	)
+
+	return nil
+}
+
+// SetNodeFavorite sets the favorite status of a node
+func (s *SQLiteDB) SetNodeFavorite(nodeID uuid.UUID, favorite bool) error {
+	ctx, cancel := withTimeout()
+	defer cancel()
+
+	favoriteInt := 0
+	if favorite {
+		favoriteInt = 1
+	}
+
+	query, args, err := s.builder.
+		Update("nodes").
+		Set("favorite", favoriteInt).
+		Set("updated_at", sq.Expr("CURRENT_TIMESTAMP")).
+		Where(sq.Eq{"id": nodeID.String()}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build update query: %w", err)
+	}
+
+	result, err := s.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to set node favorite: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("node not found")
+	}
+
+	logger.Log.Info("Node favorite status updated",
+		zap.String("node_id", nodeID.String()),
+		zap.Bool("favorite", favorite),
+	)
+
+	return nil
+}
+
+// DeleteNode deletes a node and all its associated measurements
+func (s *SQLiteDB) DeleteNode(nodeID uuid.UUID) error {
+	ctx, cancel := withTimeout()
+	defer cancel()
+
+	// Start transaction
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	nodeIDStr := nodeID.String()
+
+	// Delete measurements (cascade should handle this, but explicit is safer)
+	_, err = tx.ExecContext(ctx, "DELETE FROM measurements WHERE node_id = ?", nodeIDStr)
+	if err != nil {
+		return fmt.Errorf("failed to delete measurements: %w", err)
+	}
+
+	// Delete failed measurements
+	_, err = tx.ExecContext(ctx, "DELETE FROM failed_measurements WHERE node_id = ?", nodeIDStr)
+	if err != nil {
+		return fmt.Errorf("failed to delete failed measurements: %w", err)
+	}
+
+	// Delete node
+	result, err := tx.ExecContext(ctx, "DELETE FROM nodes WHERE id = ?", nodeIDStr)
+	if err != nil {
+		return fmt.Errorf("failed to delete node: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("node not found")
+	}
+
+	// Commit transaction
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	logger.Log.Info("Node deleted successfully",
+		zap.String("node_id", nodeID.String()),
+	)
+
+	return nil
 }

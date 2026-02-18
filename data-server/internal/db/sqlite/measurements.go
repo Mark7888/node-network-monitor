@@ -543,13 +543,14 @@ func (s *SQLiteDB) GetLast24hStats() (*models.DashboardStats24h, error) {
 
 	query := `
 		SELECT
-			COALESCE(AVG(download_bandwidth) / 125000.0, 0) as avg_download_mbps,
-			COALESCE(AVG(upload_bandwidth) / 125000.0, 0) as avg_upload_mbps,
-			COALESCE(AVG(ping_latency), 0) as avg_ping_ms,
-			COALESCE(AVG(ping_jitter), 0) as avg_jitter_ms,
-			COALESCE(AVG(packet_loss), 0) as avg_packet_loss
-		FROM measurements
-		WHERE timestamp >= ?
+			COALESCE(AVG(m.download_bandwidth) / 125000.0, 0) as avg_download_mbps,
+			COALESCE(AVG(m.upload_bandwidth) / 125000.0, 0) as avg_upload_mbps,
+			COALESCE(AVG(m.ping_latency), 0) as avg_ping_ms,
+			COALESCE(AVG(m.ping_jitter), 0) as avg_jitter_ms,
+			COALESCE(AVG(m.packet_loss), 0) as avg_packet_loss
+		FROM measurements m
+		INNER JOIN nodes n ON m.node_id = n.id
+		WHERE m.timestamp >= ? AND n.archived = 0
 	`
 
 	err := s.db.QueryRowContext(ctx, query, past24h).Scan(

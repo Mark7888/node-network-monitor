@@ -33,6 +33,9 @@ type Database interface {
 	GetNodeWithStats(nodeID uuid.UUID) (*models.NodeWithStats, error)
 	UpdateNodeStatus(aliveTimeout, inactiveTimeout time.Duration) error
 	GetNodeCounts() (total, active, unreachable, inactive int, err error)
+	ArchiveNode(nodeID uuid.UUID, archived bool) error
+	SetNodeFavorite(nodeID uuid.UUID, favorite bool) error
+	DeleteNode(nodeID uuid.UUID) error
 
 	// Measurements
 	InsertMeasurement(m *models.Measurement) error

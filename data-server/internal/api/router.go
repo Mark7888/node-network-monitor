@@ -98,6 +98,9 @@ func SetupRouter(cfg *config.Config, database db.Database, jwtManager *auth.JWTM
 				protected.GET("/nodes", adminHandler.HandleListNodes)
 				protected.GET("/nodes/:id", adminHandler.HandleGetNodeDetails)
 				protected.GET("/nodes/:id/measurements", adminHandler.HandleGetNodeMeasurements)
+				protected.PATCH("/nodes/:id/archive", adminHandler.HandleArchiveNode)
+				protected.PATCH("/nodes/:id/favorite", adminHandler.HandleSetNodeFavorite)
+				protected.DELETE("/nodes/:id", adminHandler.HandleDeleteNode)
 
 				// API Keys
 				protected.GET("/api-keys", apiKeyHandler.HandleListAPIKeys)

@@ -11,6 +11,9 @@ export function useNodes() {
     error,
     fetchNodes,
     fetchNodeDetails,
+    archiveNode,
+    toggleFavorite,
+    deleteNode,
     clearError,
   } = useNodesStore();
 
@@ -21,6 +24,9 @@ export function useNodes() {
     error,
     fetchNodes,
     fetchNodeDetails,
+    archiveNode,
+    toggleFavorite,
+    deleteNode,
     clearError,
   };
 }

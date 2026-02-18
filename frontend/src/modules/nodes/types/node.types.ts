@@ -11,6 +11,8 @@ export interface Node {
   first_seen: string;
   last_seen: string;
   last_alive: string;
+  archived: boolean;
+  favorite: boolean;
   created_at: string;
   updated_at: string;
   location?: string;

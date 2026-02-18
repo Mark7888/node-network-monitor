@@ -371,3 +371,156 @@ func (h *AdminHandler) HandleGetDashboard(c *gin.Context) {
 
 	c.JSON(http.StatusOK, summary)
 }
+
+// HandleArchiveNode archives or unarchives a node
+// PATCH /api/v1/admin/nodes/:id/archive
+func (h *AdminHandler) HandleArchiveNode(c *gin.Context) {
+	nodeID, err := validators.ValidateUUID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: "Invalid node ID",
+		})
+		return
+	}
+
+	var req struct {
+		Archived *bool `json:"archived" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "Invalid request body",
+			Details: err.Error(),
+		})
+		return
+	}
+
+	if req.Archived == nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: "archived field is required",
+		})
+		return
+	}
+
+	err = h.db.ArchiveNode(nodeID, *req.Archived)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{
+				Error: "Node not found",
+			})
+			return
+		}
+		logger.Log.Error("Failed to archive node", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error: "Failed to update node",
+		})
+		return
+	}
+
+	action := "archived"
+	if !*req.Archived {
+		action = "unarchived"
+	}
+
+	logger.Log.Info("Node "+action,
+		zap.String("node_id", nodeID.String()),
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "Node " + action + " successfully",
+		"archived": *req.Archived,
+	})
+}
+
+// HandleSetNodeFavorite sets or removes the favorite status of a node
+// PATCH /api/v1/admin/nodes/:id/favorite
+func (h *AdminHandler) HandleSetNodeFavorite(c *gin.Context) {
+	nodeID, err := validators.ValidateUUID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: "Invalid node ID",
+		})
+		return
+	}
+
+	var req struct {
+		Favorite *bool `json:"favorite" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "Invalid request body",
+			Details: err.Error(),
+		})
+		return
+	}
+
+	if req.Favorite == nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: "favorite field is required",
+		})
+		return
+	}
+
+	err = h.db.SetNodeFavorite(nodeID, *req.Favorite)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{
+				Error: "Node not found",
+			})
+			return
+		}
+		logger.Log.Error("Failed to set node favorite", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error: "Failed to update node",
+		})
+		return
+	}
+
+	action := "added to"
+	if !*req.Favorite {
+		action = "removed from"
+	}
+
+	logger.Log.Info("Node "+action+" favorites",
+		zap.String("node_id", nodeID.String()),
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "Node " + action + " favorites successfully",
+		"favorite": *req.Favorite,
+	})
+}
+
+// HandleDeleteNode deletes a node and all its measurements
+// DELETE /api/v1/admin/nodes/:id
+func (h *AdminHandler) HandleDeleteNode(c *gin.Context) {
+	nodeID, err := validators.ValidateUUID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: "Invalid node ID",
+		})
+		return
+	}
+
+	err = h.db.DeleteNode(nodeID)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{
+				Error: "Node not found",
+			})
+			return
+		}
+		logger.Log.Error("Failed to delete node", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error: "Failed to delete node",
+		})
+		return
+	}
+
+	logger.Log.Info("Node deleted",
+		zap.String("node_id", nodeID.String()),
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Node deleted successfully",
+	})
+}

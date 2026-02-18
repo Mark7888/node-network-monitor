@@ -34,12 +34,36 @@ func (p *PostgresDB) Migrate() error {
 		return fmt.Errorf("failed to create api_keys table: %w", err)
 	}
 
+	// Add missing columns to existing tables
+	if err := p.addMissingColumns(); err != nil {
+		return fmt.Errorf("failed to add missing columns: %w", err)
+	}
+
 	// Create indexes
 	if err := p.createIndexes(); err != nil {
 		return fmt.Errorf("failed to create indexes: %w", err)
 	}
 
 	logger.Log.Info("PostgreSQL migrations completed successfully")
+	return nil
+}
+
+// addMissingColumns adds any missing columns to existing tables
+// This function is called during migration to ensure existing databases
+// have all the columns from newer schema versions
+func (p *PostgresDB) addMissingColumns() error {
+	// Add archived column to nodes table
+	_, err := p.db.Exec(`ALTER TABLE nodes ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT false`)
+	if err != nil {
+		return fmt.Errorf("failed to add archived column: %w", err)
+	}
+
+	// Add favorite column to nodes table
+	_, err = p.db.Exec(`ALTER TABLE nodes ADD COLUMN IF NOT EXISTS favorite BOOLEAN NOT NULL DEFAULT false`)
+	if err != nil {
+		return fmt.Errorf("failed to add favorite column: %w", err)
+	}
+
 	return nil
 }
 
@@ -51,6 +75,8 @@ CREATE TABLE IF NOT EXISTS nodes (
 	last_seen TIMESTAMP NOT NULL DEFAULT NOW(),
 	last_alive TIMESTAMP NOT NULL DEFAULT NOW(),
 	status VARCHAR(20) NOT NULL DEFAULT 'active',
+	archived BOOLEAN NOT NULL DEFAULT false,
+	favorite BOOLEAN NOT NULL DEFAULT false,
 	created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 	updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 )
@@ -137,6 +163,8 @@ func (p *PostgresDB) createIndexes() error {
 		"CREATE INDEX IF NOT EXISTS idx_nodes_status ON nodes(status)",
 		"CREATE INDEX IF NOT EXISTS idx_nodes_last_alive ON nodes(last_alive)",
 		"CREATE INDEX IF NOT EXISTS idx_nodes_name ON nodes(name)",
+		"CREATE INDEX IF NOT EXISTS idx_nodes_archived ON nodes(archived)",
+		"CREATE INDEX IF NOT EXISTS idx_nodes_favorite ON nodes(favorite)",
 		"CREATE INDEX IF NOT EXISTS idx_measurements_node_id ON measurements(node_id)",
 		"CREATE INDEX IF NOT EXISTS idx_measurements_timestamp ON measurements(timestamp)",
 		"CREATE INDEX IF NOT EXISTS idx_measurements_created_at ON measurements(created_at)",

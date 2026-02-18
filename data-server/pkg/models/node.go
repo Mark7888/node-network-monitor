@@ -23,6 +23,8 @@ type Node struct {
 	LastSeen  time.Time  `json:"last_seen" db:"last_seen"`
 	LastAlive time.Time  `json:"last_alive" db:"last_alive"`
 	Status    NodeStatus `json:"status" db:"status"`
+	Archived  bool       `json:"archived" db:"archived"`
+	Favorite  bool       `json:"favorite" db:"favorite"`
 	CreatedAt time.Time  `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at" db:"updated_at"`
 }

@@ -46,7 +46,7 @@ func (p *PostgresDB) GetNodeByID(nodeID uuid.UUID) (*models.Node, error) {
 	defer cancel()
 
 	query, args, err := p.builder.
-		Select("id", "name", "first_seen", "last_seen", "last_alive", "status", "created_at", "updated_at").
+		Select("id", "name", "first_seen", "last_seen", "last_alive", "status", "archived", "favorite", "created_at", "updated_at").
 		From("nodes").
 		Where(sq.Eq{"id": nodeID}).
 		ToSql()
@@ -62,6 +62,8 @@ func (p *PostgresDB) GetNodeByID(nodeID uuid.UUID) (*models.Node, error) {
 		&node.LastSeen,
 		&node.LastAlive,
 		&node.Status,
+		&node.Archived,
+		&node.Favorite,
 		&node.CreatedAt,
 		&node.UpdatedAt,
 	)
@@ -83,7 +85,7 @@ func (p *PostgresDB) GetAllNodes(status string, page, limit int) ([]models.Node,
 
 	// Build base query
 	selectQuery := p.builder.
-		Select("id", "name", "first_seen", "last_seen", "last_alive", "status", "created_at", "updated_at").
+		Select("id", "name", "first_seen", "last_seen", "last_alive", "status", "archived", "favorite", "created_at", "updated_at").
 		From("nodes")
 
 	countQuery := p.builder.Select("COUNT(*)").From("nodes")
@@ -132,6 +134,8 @@ func (p *PostgresDB) GetAllNodes(status string, page, limit int) ([]models.Node,
 			&node.LastSeen,
 			&node.LastAlive,
 			&node.Status,
+			&node.Archived,
+			&node.Favorite,
 			&node.CreatedAt,
 			&node.UpdatedAt,
 		)
@@ -333,7 +337,7 @@ func (p *PostgresDB) UpdateNodeStatus(aliveTimeout, inactiveTimeout time.Duratio
 	return nil
 }
 
-// GetNodeCounts returns counts of nodes by status
+// GetNodeCounts returns counts of nodes by status (excluding archived nodes)
 func (p *PostgresDB) GetNodeCounts() (total, active, unreachable, inactive int, err error) {
 	ctx, cancel := withTimeout()
 	defer cancel()
@@ -345,6 +349,7 @@ func (p *PostgresDB) GetNodeCounts() (total, active, unreachable, inactive int, 
 			COUNT(*) FILTER (WHERE status = 'unreachable') as unreachable,
 			COUNT(*) FILTER (WHERE status = 'inactive') as inactive
 		FROM nodes
+		WHERE archived = false
 	`
 
 	err = p.db.QueryRowContext(ctx, query).Scan(&total, &active, &unreachable, &inactive)
@@ -353,4 +358,117 @@ func (p *PostgresDB) GetNodeCounts() (total, active, unreachable, inactive int, 
 	}
 
 	return total, active, unreachable, inactive, nil
+}
+
+// ArchiveNode sets the archived status of a node
+func (p *PostgresDB) ArchiveNode(nodeID uuid.UUID, archived bool) error {
+	ctx, cancel := withTimeout()
+	defer cancel()
+
+	query, args, err := p.builder.
+		Update("nodes").
+		Set("archived", archived).
+		Set("updated_at", sq.Expr("NOW()")).
+		Where(sq.Eq{"id": nodeID}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build update query: %w", err)
+	}
+
+	result, err := p.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to archive node: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("node not found")
+	}
+
+	logger.Log.Info("Node archived status updated",
+		zap.String("node_id", nodeID.String()),
+		zap.Bool("archived", archived),
+	)
+
+	return nil
+}
+
+// SetNodeFavorite sets the favorite status of a node
+func (p *PostgresDB) SetNodeFavorite(nodeID uuid.UUID, favorite bool) error {
+	ctx, cancel := withTimeout()
+	defer cancel()
+
+	query, args, err := p.builder.
+		Update("nodes").
+		Set("favorite", favorite).
+		Set("updated_at", sq.Expr("NOW()")).
+		Where(sq.Eq{"id": nodeID}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build update query: %w", err)
+	}
+
+	result, err := p.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to set node favorite: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("node not found")
+	}
+
+	logger.Log.Info("Node favorite status updated",
+		zap.String("node_id", nodeID.String()),
+		zap.Bool("favorite", favorite),
+	)
+
+	return nil
+}
+
+// DeleteNode deletes a node and all its associated measurements
+func (p *PostgresDB) DeleteNode(nodeID uuid.UUID) error {
+	ctx, cancel := withTimeout()
+	defer cancel()
+
+	// Start transaction
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Delete measurements (cascade should handle this, but explicit is safer)
+	_, err = tx.ExecContext(ctx, "DELETE FROM measurements WHERE node_id = $1", nodeID)
+	if err != nil {
+		return fmt.Errorf("failed to delete measurements: %w", err)
+	}
+
+	// Delete failed measurements
+	_, err = tx.ExecContext(ctx, "DELETE FROM failed_measurements WHERE node_id = $1", nodeID)
+	if err != nil {
+		return fmt.Errorf("failed to delete failed measurements: %w", err)
+	}
+
+	// Delete node
+	result, err := tx.ExecContext(ctx, "DELETE FROM nodes WHERE id = $1", nodeID)
+	if err != nil {
+		return fmt.Errorf("failed to delete node: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("node not found")
+	}
+
+	// Commit transaction
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	logger.Log.Info("Node deleted successfully",
+		zap.String("node_id", nodeID.String()),
+	)
+
+	return nil
 }

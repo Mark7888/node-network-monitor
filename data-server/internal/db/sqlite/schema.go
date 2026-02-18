@@ -34,12 +34,50 @@ func (s *SQLiteDB) Migrate() error {
 		return fmt.Errorf("failed to create api_keys table: %w", err)
 	}
 
+	// Add missing columns to existing tables
+	if err := s.addMissingColumns(); err != nil {
+		return fmt.Errorf("failed to add missing columns: %w", err)
+	}
+
 	// Create indexes
 	if err := s.createIndexes(); err != nil {
 		return fmt.Errorf("failed to create indexes: %w", err)
 	}
 
 	logger.Log.Info("SQLite migrations completed successfully")
+	return nil
+}
+
+// addMissingColumns adds any missing columns to existing tables
+// This function is called during migration to ensure existing databases
+// have all the columns from newer schema versions
+func (s *SQLiteDB) addMissingColumns() error {
+	// Check if archived column exists
+	var archivedExists int
+	err := s.db.QueryRow("SELECT COUNT(*) FROM pragma_table_info('nodes') WHERE name='archived'").Scan(&archivedExists)
+	if err != nil {
+		return fmt.Errorf("failed to check for archived column: %w", err)
+	}
+	if archivedExists == 0 {
+		_, err = s.db.Exec(`ALTER TABLE nodes ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`)
+		if err != nil {
+			return fmt.Errorf("failed to add archived column: %w", err)
+		}
+	}
+
+	// Check if favorite column exists
+	var favoriteExists int
+	err = s.db.QueryRow("SELECT COUNT(*) FROM pragma_table_info('nodes') WHERE name='favorite'").Scan(&favoriteExists)
+	if err != nil {
+		return fmt.Errorf("failed to check for favorite column: %w", err)
+	}
+	if favoriteExists == 0 {
+		_, err = s.db.Exec(`ALTER TABLE nodes ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0`)
+		if err != nil {
+			return fmt.Errorf("failed to add favorite column: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -51,6 +89,8 @@ CREATE TABLE IF NOT EXISTS nodes (
 	last_seen DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	last_alive DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	status TEXT NOT NULL DEFAULT 'active',
+	archived INTEGER NOT NULL DEFAULT 0,
+	favorite INTEGER NOT NULL DEFAULT 0,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 )
@@ -139,6 +179,8 @@ func (s *SQLiteDB) createIndexes() error {
 		"CREATE INDEX IF NOT EXISTS idx_nodes_status ON nodes(status)",
 		"CREATE INDEX IF NOT EXISTS idx_nodes_last_alive ON nodes(last_alive)",
 		"CREATE INDEX IF NOT EXISTS idx_nodes_name ON nodes(name)",
+		"CREATE INDEX IF NOT EXISTS idx_nodes_archived ON nodes(archived)",
+		"CREATE INDEX IF NOT EXISTS idx_nodes_favorite ON nodes(favorite)",
 		"CREATE INDEX IF NOT EXISTS idx_measurements_node_id ON measurements(node_id)",
 		"CREATE INDEX IF NOT EXISTS idx_measurements_timestamp ON measurements(timestamp)",
 		"CREATE INDEX IF NOT EXISTS idx_measurements_created_at ON measurements(created_at)",
