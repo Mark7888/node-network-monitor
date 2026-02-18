@@ -36,9 +36,10 @@ func SetupRouter(cfg *config.Config, database db.Database, jwtManager *auth.JWTM
 	rateLimiter.Cleanup()
 
 	// Health check endpoint (no auth required)
+	// Uses SafePing to prevent DDoS attacks by caching ping results
 	router.GET("/health", func(c *gin.Context) {
 		dbStatus := "connected"
-		if err := database.Ping(); err != nil {
+		if err := database.SafePing(); err != nil {
 			dbStatus = "disconnected"
 		}
 

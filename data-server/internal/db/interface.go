@@ -13,6 +13,7 @@ type Database interface {
 	// Connection management
 	Close() error
 	Ping() error
+	SafePing() error
 	Migrate() error
 
 	// API Keys

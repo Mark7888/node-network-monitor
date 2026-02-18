@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sync"
 	"time"
 
 	"mark7888/speedtest-data-server/internal/config"
@@ -18,6 +19,11 @@ import (
 type PostgresDB struct {
 	db      *sql.DB
 	builder sq.StatementBuilderType
+
+	// Ping cache to prevent DDoS via health checks
+	pingMutex    sync.RWMutex
+	lastPingTime time.Time
+	lastPingErr  error
 }
 
 // New creates a new PostgreSQL database connection
@@ -67,6 +73,39 @@ func (p *PostgresDB) Ping() error {
 	ctx, cancel := withTimeout()
 	defer cancel()
 	return p.db.PingContext(ctx)
+}
+
+// SafePing checks if the database connection is alive with caching to prevent DDoS
+// Only performs an actual ping if the last ping was more than 5 seconds ago
+func (p *PostgresDB) SafePing() error {
+	// First, try to read the cached result
+	p.pingMutex.RLock()
+	if time.Since(p.lastPingTime) < 5*time.Second {
+		err := p.lastPingErr
+		p.pingMutex.RUnlock()
+		return err
+	}
+	p.pingMutex.RUnlock()
+
+	// Cache is stale, acquire write lock and ping
+	p.pingMutex.Lock()
+	defer p.pingMutex.Unlock()
+
+	// Double-check in case another goroutine already updated the cache
+	if time.Since(p.lastPingTime) < 5*time.Second {
+		return p.lastPingErr
+	}
+
+	// Perform the actual ping
+	ctx, cancel := withTimeout()
+	defer cancel()
+	err := p.db.PingContext(ctx)
+
+	// Update cache
+	p.lastPingTime = time.Now()
+	p.lastPingErr = err
+
+	return err
 }
 
 // withTimeout creates a context with a default timeout
