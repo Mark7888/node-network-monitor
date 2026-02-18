@@ -25,3 +25,10 @@ export interface ApiResponse<T> {
   error?: ApiError;
   success: boolean;
 }
+
+export interface HealthResponse {
+  status: string;
+  database: string;
+  uptime_seconds: number;
+  version: string;
+}
