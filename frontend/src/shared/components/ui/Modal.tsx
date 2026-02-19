@@ -43,7 +43,7 @@ export default function Modal({
 
   return (
     <dialog ref={dialogRef} className="modal" onClose={onClose}>
-      <div className={`modal-box ${sizeClass} w-11/12 md:w-auto`}>
+      <div className={`modal-box ${sizeClass} w-11/12 md:w-full`}>
         {/* Header */}
         <div className="flex justify-between items-center mb-4">
           {title && <h3 className="font-bold text-lg pr-8">{title}</h3>}
