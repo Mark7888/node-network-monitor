@@ -12,7 +12,7 @@ import Modal from '@/shared/components/ui/Modal';
 import Input from '@/shared/components/ui/Input';
 import Select from '@/shared/components/ui/Select';
 import { Plus, Key, Trash2, Copy, Check } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { showToast } from '@/shared/services/toastService';
 
 /**
  * API Keys management page component
@@ -45,7 +45,7 @@ export default function APIKeysPage() {
 
   const handleCreateKey = async () => {
     if (!newKeyName.trim()) {
-      toast.error('Please enter a name for the API key');
+      showToast.error('Please enter a name for the API key');
       return;
     }
 
@@ -65,7 +65,7 @@ export default function APIKeysPage() {
     if (createdKey?.key) {
       await navigator.clipboard.writeText(createdKey.key);
       setCopiedKey(true);
-      toast.success('API key copied to clipboard');
+      showToast.success('API key copied to clipboard');
       setTimeout(() => setCopiedKey(false), 2000);
     }
   };

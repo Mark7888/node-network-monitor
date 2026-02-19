@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Node, NodeDetails } from '../types/node.types';
 import * as nodeService from '../services/nodeService';
-import toast from 'react-hot-toast';
+import { showToast } from '@/shared/services/toastService';
 
 interface NodesStore {
   nodes: Node[];
@@ -64,11 +64,11 @@ export const useNodesStore = create<NodesStore>((set, get) => ({
       );
       set({ nodes });
       
-      toast.success(archived ? 'Node archived' : 'Node unarchived');
+      showToast.success(archived ? 'Node archived' : 'Node unarchived');
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
       const message = err.response?.data?.error || 'Failed to update node';
-      toast.error(message);
+      showToast.error(message);
       throw error;
     }
   },
@@ -88,11 +88,11 @@ export const useNodesStore = create<NodesStore>((set, get) => ({
       );
       set({ nodes });
       
-      toast.success(newFavorite ? 'Added to favorites' : 'Removed from favorites');
+      showToast.success(newFavorite ? 'Added to favorites' : 'Removed from favorites');
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
       const message = err.response?.data?.error || 'Failed to update node';
-      toast.error(message);
+      showToast.error(message);
       throw error;
     }
   },
@@ -105,11 +105,11 @@ export const useNodesStore = create<NodesStore>((set, get) => ({
       const nodes = get().nodes.filter(node => node.id !== nodeId);
       set({ nodes });
       
-      toast.success('Node deleted successfully');
+      showToast.success('Node deleted successfully');
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
       const message = err.response?.data?.error || 'Failed to delete node';
-      toast.error(message);
+      showToast.error(message);
       throw error;
     }
   },

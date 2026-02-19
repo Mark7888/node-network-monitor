@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { getNodeMeasurements } from '@/modules/nodes/services/nodeService';
 import { Measurement } from '../types/measurement.types';
-import toast from 'react-hot-toast';
+import { showToast } from '@/shared/services/toastService';
 
 /**
  * Hook for fetching node measurements with pagination and filtering
@@ -33,7 +33,7 @@ export function useNodeMeasurements(nodeId: string | undefined, status: 'all' | 
       const err = error as { response?: { data?: { error?: string } } };
       const errorMessage = err.response?.data?.error || 'Failed to fetch measurements';
       setError(errorMessage);
-      toast.error(errorMessage);
+      showToast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

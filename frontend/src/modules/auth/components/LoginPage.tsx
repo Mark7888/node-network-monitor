@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import Input from '@/shared/components/ui/Input';
 import Button from '@/shared/components/ui/Button';
-import toast from 'react-hot-toast';
+import { showToast } from '@/shared/services/toastService';
 
 /**
  * Login page component
@@ -30,13 +30,13 @@ export default function LoginPage() {
     e.preventDefault();
     
     if (!username || !password) {
-      toast.error('Please enter username and password');
+      showToast.error('Please enter username and password');
       return;
     }
 
     try {
       await login({ username, password });
-      toast.success('Login successful!');
+      showToast.success('Login successful!');
       navigate('/dashboard', { replace: true });
     } catch (err) {
       // Error is already set in store and displayed

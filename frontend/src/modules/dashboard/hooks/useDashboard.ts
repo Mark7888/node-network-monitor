@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { DashboardSummary } from '../types/dashboard.types';
 import { getDashboardSummary } from '../services/dashboardService';
-import toast from 'react-hot-toast';
+import { showToast } from '@/shared/services/toastService';
 
 /**
  * Hook for fetching dashboard summary
@@ -22,7 +22,7 @@ export function useDashboard() {
       const err = error as { response?: { data?: { error?: string } } };
       const errorMessage = err.response?.data?.error || 'Failed to fetch dashboard data';
       setError(errorMessage);
-      toast.error(errorMessage);
+      showToast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

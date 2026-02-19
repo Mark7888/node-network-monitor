@@ -1,5 +1,5 @@
 import api from './axiosConfig';
-import toast from 'react-hot-toast';
+import { showToast } from '@/shared/services/toastService';
 
 /**
  * Setup axios interceptors for authentication and error handling
@@ -30,11 +30,11 @@ export const setupInterceptors = (
         localStorage.removeItem('token');
         localStorage.removeItem('username');
         onUnauthorized();
-        toast.error('Session expired. Please login again.');
+        showToast.error('Session expired. Please login again.');
       } else if (error.response?.status >= 500) {
-        toast.error('Server error. Please try again later.');
+        showToast.error('Server error. Please try again later.');
       } else if (!error.response) {
-        toast.error('Network error. Please check your connection.');
+        showToast.error('Network error. Please check your connection.');
       }
       
       return Promise.reject(error);

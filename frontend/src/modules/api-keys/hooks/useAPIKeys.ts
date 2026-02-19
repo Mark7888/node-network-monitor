@@ -6,7 +6,7 @@ import {
   deleteAPIKey,
 } from '../services/apiKeyService';
 import { APIKey, CreateAPIKeyResponse } from '../types/apiKey.types';
-import toast from 'react-hot-toast';
+import { showToast } from '@/shared/services/toastService';
 
 /**
  * Hook for managing API keys
@@ -27,7 +27,7 @@ export function useAPIKeys() {
       const err = error as { response?: { data?: { error?: string } } };
       const errorMessage = err.response?.data?.error || 'Failed to fetch API keys';
       setError(errorMessage);
-      toast.error(errorMessage);
+      showToast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -36,13 +36,13 @@ export function useAPIKeys() {
   const createKey = useCallback(async (name: string): Promise<CreateAPIKeyResponse | null> => {
     try {
       const data = await createAPIKey({ name });
-      toast.success('API key created successfully!');
+      showToast.success('API key created successfully!');
       await fetchAPIKeys(); // Refresh list
       return data;
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
       const errorMessage = err.response?.data?.error || 'Failed to create API key';
-      toast.error(errorMessage);
+      showToast.error(errorMessage);
       return null;
     }
   }, [fetchAPIKeys]);
@@ -50,24 +50,24 @@ export function useAPIKeys() {
   const toggleKey = useCallback(async (id: string, enabled: boolean) => {
     try {
       await updateAPIKey(id, { enabled });
-      toast.success(`API key ${enabled ? 'enabled' : 'disabled'}`);
+      showToast.success(`API key ${enabled ? 'enabled' : 'disabled'}`);
       await fetchAPIKeys(); // Refresh list
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
       const errorMessage = err.response?.data?.error || 'Failed to update API key';
-      toast.error(errorMessage);
+      showToast.error(errorMessage);
     }
   }, [fetchAPIKeys]);
 
   const deleteKey = useCallback(async (id: string) => {
     try {
       await deleteAPIKey(id);
-      toast.success('API key deleted');
+      showToast.success('API key deleted');
       await fetchAPIKeys(); // Refresh list
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
       const errorMessage = err.response?.data?.error || 'Failed to delete API key';
-      toast.error(errorMessage);
+      showToast.error(errorMessage);
     }
   }, [fetchAPIKeys]);
 

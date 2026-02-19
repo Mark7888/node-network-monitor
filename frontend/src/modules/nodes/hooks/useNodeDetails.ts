@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { NodeDetails } from '../types/node.types';
 import { getNodeDetails } from '../services/nodeService';
-import toast from 'react-hot-toast';
+import { showToast } from '@/shared/services/toastService';
 
 /**
  * Hook for fetching node details
@@ -22,7 +22,7 @@ export function useNodeDetails(nodeId: string) {
       const err = error as { response?: { data?: { error?: string } } };
       const errorMessage = err.response?.data?.error || 'Failed to fetch node details';
       setError(errorMessage);
-      toast.error(errorMessage);
+      showToast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
