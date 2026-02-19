@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAPIKeys } from '../hooks/useAPIKeys';
 import { CreateAPIKeyResponse } from '../types/apiKey.types';
 import { formatTimestamp, formatRelativeTime } from '@/shared/utils/date';
@@ -26,10 +26,22 @@ export default function APIKeysPage() {
   const [copiedKey, setCopiedKey] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [filter, setFilter] = useState<'all' | 'enabled' | 'disabled'>('all');
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchAPIKeys();
   }, [fetchAPIKeys]);
+
+  // Focus input when create modal opens
+  useEffect(() => {
+    if (isCreateModalOpen && inputRef.current) {
+      // Small delay to ensure modal animation completes
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isCreateModalOpen]);
 
   const handleCreateKey = async () => {
     if (!newKeyName.trim()) {
@@ -206,12 +218,12 @@ export default function APIKeysPage() {
         }
       >
         <Input
+          ref={inputRef}
           label="API Key Name"
           placeholder="e.g., Production Node 1"
           value={newKeyName}
           onChange={(e) => setNewKeyName(e.target.value)}
           helperText="Choose a descriptive name to identify this key"
-          autoFocus
         />
       </Modal>
 
