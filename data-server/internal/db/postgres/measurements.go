@@ -357,7 +357,7 @@ func (p *PostgresDB) extractArgs(conditions sq.And) []interface{} {
 }
 
 // GetAggregatedMeasurements retrieves aggregated measurements for charting
-func (p *PostgresDB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.Time, interval string) ([]models.AggregatedMeasurement, error) {
+func (p *PostgresDB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.Time, interval string, hideArchived bool) ([]models.AggregatedMeasurement, error) {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
@@ -405,6 +405,11 @@ func (p *PostgresDB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to tim
 			argPos++
 		}
 		query += fmt.Sprintf(" AND m.node_id IN (%s)", strings.Join(placeholders, ","))
+	}
+
+	// Add archived filter if requested
+	if hideArchived {
+		query += " AND n.archived = false"
 	}
 
 	query += `

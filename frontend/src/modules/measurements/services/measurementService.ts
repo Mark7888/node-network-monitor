@@ -30,6 +30,7 @@ export async function getAggregatedMeasurements(
   if (params.interval) queryParams.interval = params.interval;
   if (params.limit) queryParams.limit = params.limit;
   if (params.offset) queryParams.offset = params.offset;
+  if (params.hide_archived !== undefined) queryParams.hide_archived = params.hide_archived ? 'true' : 'false';
   
   const response = await api.get<AggregatedDataResponse>(
     '/api/v1/admin/measurements/aggregate',

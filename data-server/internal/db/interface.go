@@ -41,7 +41,7 @@ type Database interface {
 	InsertMeasurement(m *models.Measurement) error
 	GetMeasurementsByNode(nodeID uuid.UUID, from, to *time.Time, page, limit int, status string) ([]models.Measurement, int, error)
 	InsertFailedMeasurement(nodeID uuid.UUID, timestamp time.Time, errorMessage string, retryCount int) error
-	GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.Time, interval string) ([]models.AggregatedMeasurement, error)
+	GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.Time, interval string, hideArchived bool) ([]models.AggregatedMeasurement, error)
 	GetMeasurementCounts() (total int64, last24h int64, lastTimestamp *time.Time, err error)
 	GetLast24hStats() (*models.DashboardStats24h, error)
 	CleanupOldMeasurements(retentionDays int) (int64, error)

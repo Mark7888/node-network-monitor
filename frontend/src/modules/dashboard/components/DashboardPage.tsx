@@ -22,7 +22,7 @@ export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState<TimeRange>('day');
   const { summary, isLoading: summaryLoading, refetch: refetchSummary } = useDashboard();
   const { fetchNodes } = useNodes();
-  const { data: measurements, isLoading: measurementsLoading, refetch: refetchMeasurements } = useMeasurements(timeRange);
+  const { data: measurements, isLoading: measurementsLoading, refetch: refetchMeasurements } = useMeasurements(timeRange, undefined, true);
   const chartData = useChartData(measurements);
 
   // Initial fetch

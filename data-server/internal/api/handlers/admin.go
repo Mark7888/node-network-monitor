@@ -312,7 +312,15 @@ func (h *AdminHandler) HandleGetAggregatedMeasurements(c *gin.Context) {
 		}
 	}
 
-	measurements, err := h.db.GetAggregatedMeasurements(nodeIDs, from, to, interval)
+	// Parse hide_archived (optional, defaults to false)
+	hideArchived := false
+	if hideArchivedStr := c.Query("hide_archived"); hideArchivedStr != "" {
+		if hideArchivedStr == "true" {
+			hideArchived = true
+		}
+	}
+
+	measurements, err := h.db.GetAggregatedMeasurements(nodeIDs, from, to, interval, hideArchived)
 	if err != nil {
 		logger.Log.Error("Failed to get aggregated measurements", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{

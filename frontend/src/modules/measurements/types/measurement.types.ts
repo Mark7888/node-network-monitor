@@ -106,4 +106,5 @@ export interface MeasurementQueryParams {
   limit?: number;
   offset?: number;
   status?: 'all' | 'successful' | 'failed';  // Filter by measurement status
+  hide_archived?: boolean;  // Hide archived nodes from results
 }

@@ -8,7 +8,7 @@ import { showToast } from '@/shared/services/toastService';
 /**
  * Hook for fetching and managing measurements data
  */
-export function useMeasurements(timeRange: TimeRange, nodeIds?: string[]) {
+export function useMeasurements(timeRange: TimeRange, nodeIds?: string[], hideArchived?: boolean) {
   const [data, setData] = useState<AggregatedMeasurement[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +26,7 @@ export function useMeasurements(timeRange: TimeRange, nodeIds?: string[]) {
         from,
         to,
         interval,
+        hide_archived: hideArchived,
       });
 
       setData(response.data || []);
@@ -37,7 +38,7 @@ export function useMeasurements(timeRange: TimeRange, nodeIds?: string[]) {
     } finally {
       setIsLoading(false);
     }
-  }, [timeRange, nodeIds]);
+  }, [timeRange, nodeIds, hideArchived]);
 
   useEffect(() => {
     fetchData();

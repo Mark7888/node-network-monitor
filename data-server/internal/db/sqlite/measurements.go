@@ -378,7 +378,7 @@ func (s *SQLiteDB) extractArgs(conditions sq.And) []interface{} {
 }
 
 // GetAggregatedMeasurements retrieves aggregated measurements for charting
-func (s *SQLiteDB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.Time, interval string) ([]models.AggregatedMeasurement, error) {
+func (s *SQLiteDB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.Time, interval string, hideArchived bool) ([]models.AggregatedMeasurement, error) {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
@@ -396,6 +396,11 @@ func (s *SQLiteDB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.
 			args = append(args, nodeID.String())
 		}
 		whereClause += fmt.Sprintf(" AND m.node_id IN (%s)", strings.Join(placeholders, ","))
+	}
+
+	// Add archived filter if requested
+	if hideArchived {
+		whereClause += " AND n.archived = 0"
 	}
 
 	// Build full query with raw SQL for date truncation

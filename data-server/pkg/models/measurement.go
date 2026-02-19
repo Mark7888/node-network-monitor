@@ -190,10 +190,11 @@ type AggregatedMeasurement struct {
 
 // AggregationRequest represents query parameters for aggregated data
 type AggregationRequest struct {
-	NodeIDs  []uuid.UUID `form:"node_ids"`
-	From     time.Time   `form:"from" binding:"required"`
-	To       time.Time   `form:"to" binding:"required"`
-	Interval string      `form:"interval" binding:"required,oneof=5m 15m 1h 6h 1d"`
+	NodeIDs      []uuid.UUID `form:"node_ids"`
+	From         time.Time   `form:"from" binding:"required"`
+	To           time.Time   `form:"to" binding:"required"`
+	Interval     string      `form:"interval" binding:"required,oneof=5m 15m 1h 6h 1d"`
+	HideArchived bool        `form:"hide_archived"`
 }
 
 // AggregationResponse represents the response with aggregated data
