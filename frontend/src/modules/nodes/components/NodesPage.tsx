@@ -34,7 +34,7 @@ export default function NodesPage() {
       // Set new sort option with default direction
       setSortBy(newSortBy);
       // Default direction based on sort type
-      if (newSortBy === 'name') {
+      if (newSortBy === 'name' || newSortBy === 'status') {
         setSortDirection('asc');
       } else {
         setSortDirection('desc');
