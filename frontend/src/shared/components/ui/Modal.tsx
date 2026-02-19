@@ -12,6 +12,7 @@ interface ModalProps {
 
 /**
  * Reusable Modal component using daisyUI modal
+ * Responsive: Full screen on mobile, centered dialog on desktop
  */
 export default function Modal({ 
   isOpen, 
@@ -42,10 +43,10 @@ export default function Modal({
 
   return (
     <dialog ref={dialogRef} className="modal" onClose={onClose}>
-      <div className={`modal-box ${sizeClass}`}>
+      <div className={`modal-box ${sizeClass} w-11/12 md:w-auto`}>
         {/* Header */}
         <div className="flex justify-between items-center mb-4">
-          {title && <h3 className="font-bold text-lg">{title}</h3>}
+          {title && <h3 className="font-bold text-lg pr-8">{title}</h3>}
           <button
             onClick={onClose}
             className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
@@ -56,11 +57,11 @@ export default function Modal({
         </div>
 
         {/* Content */}
-        <div className="py-4">{children}</div>
+        <div className="py-2 md:py-4">{children}</div>
 
         {/* Actions */}
         {actions && (
-          <div className="modal-action">
+          <div className="modal-action flex-col sm:flex-row gap-2">
             {actions}
           </div>
         )}

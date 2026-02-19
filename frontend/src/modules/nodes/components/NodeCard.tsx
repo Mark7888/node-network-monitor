@@ -58,35 +58,35 @@ export default function NodeCard({ node, isArchived = false }: NodeCardProps) {
   return (
     <Card>
       <div className="flex justify-between items-start mb-3">
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold">{node.name}</h3>
+            <h3 className="text-base md:text-lg font-semibold truncate">{node.name}</h3>
             {node.favorite && !isArchived && (
-              <Star size={16} className="text-warning fill-warning" />
+              <Star size={14} className="text-warning fill-warning flex-shrink-0 md:w-4 md:h-4" />
             )}
           </div>
-          <p className="text-sm text-base-content/60">ID: {node.id.substring(0, 8)}...</p>
+          <p className="text-xs md:text-sm text-base-content/60 truncate">ID: {node.id.substring(0, 8)}...</p>
         </div>
-        <Badge variant={badgeVariant}>
+        <Badge variant={badgeVariant} className="flex-shrink-0">
           {node.status.charAt(0).toUpperCase() + node.status.slice(1)}
         </Badge>
       </div>
 
-      <div className="space-y-2 text-sm">
+      <div className="space-y-2 text-xs md:text-sm">
         <div className="flex items-center gap-2 text-base-content/70">
-          <Clock size={16} />
-          <span>Last seen: {formatRelativeTime(node.last_seen)}</span>
+          <Clock size={14} className="flex-shrink-0 md:w-4 md:h-4" />
+          <span className="truncate">Last seen: {formatRelativeTime(node.last_seen)}</span>
         </div>
         {node.location && (
-          <div className="text-base-content/70">
+          <div className="text-base-content/70 truncate">
             📍 {node.location}
           </div>
         )}
       </div>
 
       <div className="mt-4 flex items-center gap-2">
-        <Link to={`/nodes/${node.id}`} className="flex-1">
-          <Button variant="outline" size="sm" className="w-full">
+        <Link to={`/nodes/${node.id}`} className="flex-1 min-w-0">
+          <Button variant="outline" size="sm" className="w-full text-xs md:text-sm">
             View Details →
           </Button>
         </Link>
@@ -96,10 +96,10 @@ export default function NodeCard({ node, isArchived = false }: NodeCardProps) {
             variant="ghost"
             size="sm"
             onClick={handleToggleFavorite}
-            className="px-2"
+            className="px-2 min-w-[2.5rem]"
             title={node.favorite ? 'Remove from favorites' : 'Add to favorites'}
           >
-            <Star size={18} className={node.favorite ? 'fill-warning text-warning' : ''} />
+            <Star size={16} className={node.favorite ? 'fill-warning text-warning' : ''} />
           </Button>
         )}
         
@@ -107,22 +107,22 @@ export default function NodeCard({ node, isArchived = false }: NodeCardProps) {
           variant="ghost"
           size="sm"
           onClick={handleArchiveToggle}
-          className="px-2"
+          className="px-2 min-w-[2.5rem]"
           title={node.archived ? 'Unarchive node' : 'Archive node'}
         >
-          {node.archived ? <ArchiveRestore size={18} /> : <Archive size={18} />}
+          {node.archived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
         </Button>
         
         <Button
           variant="ghost"
           size="sm"
           onClick={handleDelete}
-          className="px-2 text-error hover:bg-error/10"
+          className="px-2 min-w-[2.5rem] text-error hover:bg-error/10"
           loading={isDeleting}
           disabled={isDeleting}
           title="Delete node"
         >
-          <Trash2 size={18} />
+          <Trash2 size={16} />
         </Button>
       </div>
     </Card>

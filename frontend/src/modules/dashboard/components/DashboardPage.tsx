@@ -41,67 +41,67 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-base-content/60 mt-1">
+        <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
+        <p className="text-sm md:text-base text-base-content/60 mt-1">
           Overview of all speedtest nodes and measurements
         </p>
       </div>
 
       {/* Summary Stats */}
       {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           <div className="stats shadow bg-base-100">
-            <div className="stat">
-              <div className="stat-title">Total Nodes</div>
-              <div className="stat-value text-primary">{summary.total_nodes}</div>
-              <div className="stat-desc">
+            <div className="stat p-3 md:p-4">
+              <div className="stat-title text-xs md:text-sm">Total Nodes</div>
+              <div className="stat-value text-2xl md:text-3xl text-primary">{summary.total_nodes}</div>
+              <div className="stat-desc text-xs hidden sm:block">
                 {summary.active_nodes} active, {summary.unreachable_nodes} unreachable, {summary.inactive_nodes} inactive
               </div>
             </div>
           </div>
 
           <div className="stats shadow bg-base-100">
-            <div className="stat">
-              <div className="stat-title">Avg Download</div>
-              <div className="stat-value text-success">
+            <div className="stat p-3 md:p-4">
+              <div className="stat-title text-xs md:text-sm">Avg Download</div>
+              <div className="stat-value text-2xl md:text-3xl text-success">
                 {formatMbps(summary.average_stats_24h?.download_mbps)}
               </div>
-              <div className="stat-desc">Last 24 hours average</div>
+              <div className="stat-desc text-xs hidden sm:block">Last 24 hours average</div>
             </div>
           </div>
 
           <div className="stats shadow bg-base-100">
-            <div className="stat">
-              <div className="stat-title">Avg Upload</div>
-              <div className="stat-value text-info">
+            <div className="stat p-3 md:p-4">
+              <div className="stat-title text-xs md:text-sm">Avg Upload</div>
+              <div className="stat-value text-2xl md:text-3xl text-info">
                 {formatMbps(summary.average_stats_24h?.upload_mbps)}
               </div>
-              <div className="stat-desc">Last 24 hours average</div>
+              <div className="stat-desc text-xs hidden sm:block">Last 24 hours average</div>
             </div>
           </div>
 
           <div className="stats shadow bg-base-100">
-            <div className="stat">
-              <div className="stat-title">Avg Ping</div>
-              <div className="stat-value text-warning">
+            <div className="stat p-3 md:p-4">
+              <div className="stat-title text-xs md:text-sm">Avg Ping</div>
+              <div className="stat-value text-2xl md:text-3xl text-warning">
                 {formatLatency(summary.average_stats_24h?.ping_ms)}
               </div>
-              <div className="stat-desc">Average latency</div>
+              <div className="stat-desc text-xs hidden sm:block">Average latency</div>
             </div>
           </div>
         </div>
       )}
 
       {/* Time Range Filter */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-2">
         {TIME_RANGES.map((range) => (
           <button
             key={range.value}
             onClick={() => setTimeRange(range.value)}
-            className={`btn ${
+            className={`btn btn-sm md:btn-md whitespace-nowrap ${
               timeRange === range.value ? 'btn-primary' : 'btn-ghost'
             }`}
           >

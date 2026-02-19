@@ -80,19 +80,19 @@ export default function APIKeysPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Page Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-3">
         <div>
-          <h1 className="text-3xl font-bold">API Keys</h1>
-          <p className="text-base-content/60 mt-1">
+          <h1 className="text-2xl md:text-3xl font-bold">API Keys</h1>
+          <p className="text-sm md:text-base text-base-content/60 mt-1">
             Manage API keys for speedtest nodes
           </p>
         </div>
         <Button
           variant="primary"
           onClick={() => setIsCreateModalOpen(true)}
-          className="gap-2"
+          className="gap-2 btn-sm md:btn-md w-full md:w-auto"
         >
           <Plus size={18} />
           New Key
@@ -102,7 +102,7 @@ export default function APIKeysPage() {
       {/* Filter Dropdown */}
       {apiKeys.length > 0 && (
         <div className="flex justify-end">
-          <div className="w-48">
+          <div className="w-full md:w-48">
             <Select
               value={filter}
               onChange={(e) => setFilter(e.target.value as 'all' | 'enabled' | 'disabled')}
@@ -135,32 +135,33 @@ export default function APIKeysPage() {
           }
         />
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3 md:space-y-4">
           {filteredApiKeys.map((apiKey) => (
             <Card key={apiKey.id} compact>
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-lg font-semibold">{apiKey.name}</h3>
+              <div className="flex flex-col md:flex-row justify-between md:items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 md:gap-3 flex-wrap">
+                    <h3 className="text-base md:text-lg font-semibold truncate">{apiKey.name}</h3>
                     <Badge variant={apiKey.enabled ? 'success' : 'ghost'}>
                       {apiKey.enabled ? 'Enabled' : 'Disabled'}
                     </Badge>
                   </div>
-                  <p className="text-sm text-base-content/60 mt-1">
+                  <p className="text-xs md:text-sm text-base-content/60 mt-1 truncate">
                     ID: {apiKey.id.substring(0, 16)}...
                   </p>
-                  <div className="text-sm text-base-content/70 mt-2 space-y-1">
+                  <div className="text-xs md:text-sm text-base-content/70 mt-2 space-y-1">
                     <p>Created: {formatTimestamp(apiKey.created_at)}</p>
                     <p>
                       Last used: {apiKey.last_used ? formatRelativeTime(apiKey.last_used) : 'Never'}
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full md:w-auto">
                   <Button
                     variant={apiKey.enabled ? 'ghost' : 'secondary'}
                     size="sm"
                     onClick={() => toggleKey(apiKey.id, !apiKey.enabled)}
+                    className="flex-1 md:flex-none"
                   >
                     {apiKey.enabled ? 'Disable' : 'Enable'}
                   </Button>
@@ -168,10 +169,10 @@ export default function APIKeysPage() {
                     variant="error"
                     size="sm"
                     onClick={() => handleDeleteKey(apiKey.id)}
-                    className="gap-1"
+                    className="gap-1 flex-1 md:flex-none"
                   >
                     <Trash2 size={16} />
-                    Delete
+                    <span className="md:inline">Delete</span>
                   </Button>
                 </div>
               </div>

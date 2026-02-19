@@ -3,6 +3,7 @@ import { getHealth } from '@/shared/services/healthService';
 
 /**
  * Footer component displaying version info
+ * Hidden on mobile to save space
  */
 export default function Footer() {
   const [version, setVersion] = useState<string>('');
@@ -22,7 +23,7 @@ export default function Footer() {
   }, []);
 
   return (
-    <footer className="bg-base-100 border-t border-base-300 px-6 py-3">
+    <footer className="hidden md:block bg-base-100 border-t border-base-300 px-6 py-3">
       <div className="flex justify-between items-center text-xs text-base-content/60">
         <div>
           Network Speed Measurement System

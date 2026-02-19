@@ -4,6 +4,7 @@ import { useAuthStore } from '@/modules/auth/store/authStore';
 
 /**
  * Sidebar navigation component
+ * Hidden on mobile (< md breakpoint), shown on desktop
  */
 export default function Sidebar() {
   const location = useLocation();
@@ -18,7 +19,7 @@ export default function Sidebar() {
   const isActive = (path: string) => location.pathname.startsWith(path);
 
   return (
-    <aside className="w-64 bg-base-100 shadow-md min-h-screen flex flex-col">
+    <aside className="hidden md:flex w-64 bg-base-100 shadow-md min-h-screen flex-col">
       {/* Logo */}
       <div className="p-6 border-b border-base-300">
         <h1 className="text-xl font-bold text-primary">

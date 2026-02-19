@@ -61,3 +61,56 @@ body {
 .alert {
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
+
+/* Mobile-specific styles */
+@layer utilities {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* Touch improvements for mobile */
+@media (hover: none) and (pointer: coarse) {
+  /* Larger tap targets on mobile */
+  .btn {
+    min-height: 2.75rem;
+  }
+  
+  .btn-sm {
+    min-height: 2.25rem;
+  }
+  
+  .btn-xs {
+    min-height: 2rem;
+  }
+  
+  /* Disable hover effects on touch devices */
+  .btn:hover,
+  .card:hover {
+    transform: none !important;
+  }
+}
+
+/* Prevent text selection on interactive elements */
+button,
+.btn {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Smooth scroll on mobile */
+@media (max-width: 768px) {
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Smaller scrollbars on mobile */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+}

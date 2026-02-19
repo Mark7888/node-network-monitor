@@ -118,11 +118,11 @@ export default function NodesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-bold">Nodes</h1>
-        <p className="text-base-content/60 mt-1">
+        <h1 className="text-2xl md:text-3xl font-bold">Nodes</h1>
+        <p className="text-sm md:text-base text-base-content/60 mt-1">
           Manage and monitor all speedtest nodes
         </p>
       </div>
@@ -130,13 +130,13 @@ export default function NodesPage() {
       {/* Tabs */}
       <div className="tabs tabs-boxed w-fit">
         <button 
-          className={`tab ${activeTab === 'all' ? 'tab-active' : ''}`}
+          className={`tab tab-sm md:tab-md ${activeTab === 'all' ? 'tab-active' : ''}`}
           onClick={() => setActiveTab('all')}
         >
           All Nodes
         </button>
         <button 
-          className={`tab ${activeTab === 'archived' ? 'tab-active' : ''}`}
+          className={`tab tab-sm md:tab-md ${activeTab === 'archived' ? 'tab-active' : ''}`}
           onClick={() => setActiveTab('archived')}
         >
           Archived
@@ -144,31 +144,31 @@ export default function NodesPage() {
       </div>
 
       {/* Filters and Controls */}
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-col md:flex-row md:flex-wrap items-start md:items-center gap-3 md:gap-4">
         {/* Status Filter */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">Status:</span>
-          <div className="join">
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <span className="text-xs md:text-sm font-medium whitespace-nowrap">Status:</span>
+          <div className="join overflow-x-auto w-full">
             <button 
-              className={`btn btn-sm join-item ${statusFilter === 'all' ? 'btn-primary' : 'btn-ghost'}`}
+              className={`btn btn-xs md:btn-sm join-item ${statusFilter === 'all' ? 'btn-primary' : 'btn-ghost'}`}
               onClick={() => setStatusFilter('all')}
             >
               All
             </button>
             <button 
-              className={`btn btn-sm join-item ${statusFilter === 'active' ? 'btn-primary' : 'btn-ghost'}`}
+              className={`btn btn-xs md:btn-sm join-item ${statusFilter === 'active' ? 'btn-primary' : 'btn-ghost'}`}
               onClick={() => setStatusFilter('active')}
             >
               Active
             </button>
             <button 
-              className={`btn btn-sm join-item ${statusFilter === 'unreachable' ? 'btn-primary' : 'btn-ghost'}`}
+              className={`btn btn-xs md:btn-sm join-item ${statusFilter === 'unreachable' ? 'btn-primary' : 'btn-ghost'}`}
               onClick={() => setStatusFilter('unreachable')}
             >
               Unreachable
             </button>
             <button 
-              className={`btn btn-sm join-item ${statusFilter === 'inactive' ? 'btn-primary' : 'btn-ghost'}`}
+              className={`btn btn-xs md:btn-sm join-item ${statusFilter === 'inactive' ? 'btn-primary' : 'btn-ghost'}`}
               onClick={() => setStatusFilter('inactive')}
             >
               Inactive
@@ -177,34 +177,35 @@ export default function NodesPage() {
         </div>
 
         {/* Sort By */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">Sort by:</span>
+        <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto">
+          <span className="text-xs md:text-sm font-medium whitespace-nowrap">Sort by:</span>
           <div className="join">
             <button 
-              className={`btn btn-sm join-item gap-1 ${sortBy === 'last_activity' ? 'btn-primary' : 'btn-ghost'}`}
+              className={`btn btn-xs md:btn-sm join-item gap-1 whitespace-nowrap ${sortBy === 'last_activity' ? 'btn-primary' : 'btn-ghost'}`}
               onClick={() => handleSortChange('last_activity')}
             >
-              Last Activity
+              <span className="hidden sm:inline">Last Activity</span>
+              <span className="sm:hidden">Activity</span>
               {sortBy === 'last_activity' && (
-                sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />
+                sortDirection === 'asc' ? <ArrowUp size={12} className="md:w-[14px] md:h-[14px]" /> : <ArrowDown size={12} className="md:w-[14px] md:h-[14px]" />
               )}
             </button>
             <button 
-              className={`btn btn-sm join-item gap-1 ${sortBy === 'name' ? 'btn-primary' : 'btn-ghost'}`}
+              className={`btn btn-xs md:btn-sm join-item gap-1 whitespace-nowrap ${sortBy === 'name' ? 'btn-primary' : 'btn-ghost'}`}
               onClick={() => handleSortChange('name')}
             >
               Name
               {sortBy === 'name' && (
-                sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />
+                sortDirection === 'asc' ? <ArrowUp size={12} className="md:w-[14px] md:h-[14px]" /> : <ArrowDown size={12} className="md:w-[14px] md:h-[14px]" />
               )}
             </button>
             <button 
-              className={`btn btn-sm join-item gap-1 ${sortBy === 'status' ? 'btn-primary' : 'btn-ghost'}`}
+              className={`btn btn-xs md:btn-sm join-item gap-1 whitespace-nowrap ${sortBy === 'status' ? 'btn-primary' : 'btn-ghost'}`}
               onClick={() => handleSortChange('status')}
             >
               Status
               {sortBy === 'status' && (
-                sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />
+                sortDirection === 'asc' ? <ArrowUp size={12} className="md:w-[14px] md:h-[14px]" /> : <ArrowDown size={12} className="md:w-[14px] md:h-[14px]" />
               )}
             </button>
           </div>
@@ -216,11 +217,11 @@ export default function NodesPage() {
             <label className="label cursor-pointer gap-2">
               <input
                 type="checkbox"
-                className="checkbox checkbox-sm"
+                className="checkbox checkbox-xs md:checkbox-sm"
                 checked={showFavoritesSeparately}
                 onChange={(e) => setShowFavoritesSeparately(e.target.checked)}
               />
-              <span className="label-text">Show favorites separately</span>
+              <span className="label-text text-xs md:text-sm">Show favorites separately</span>
             </label>
           </div>
         )}
@@ -241,11 +242,11 @@ export default function NodesPage() {
         <>
           {/* Favorites Section */}
           {showFavoritesSeparately && favoriteNodes.length > 0 && activeTab === 'all' && (
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
+            <div className="space-y-3 md:space-y-4">
+              <h2 className="text-lg md:text-xl font-semibold flex items-center gap-2">
                 ⭐ Favorite Nodes
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                 {favoriteNodes.map((node) => (
                   <NodeCard key={node.id} node={node} />
                 ))}
@@ -255,11 +256,11 @@ export default function NodesPage() {
 
           {/* Regular Nodes Section */}
           {regularNodes.length > 0 && (
-            <div className="space-y-4">
+            <div className="space-y-3 md:space-y-4">
               {showFavoritesSeparately && favoriteNodes.length > 0 && activeTab === 'all' && (
-                <h2 className="text-xl font-semibold">Other Nodes</h2>
+                <h2 className="text-lg md:text-xl font-semibold">Other Nodes</h2>
               )}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                 {regularNodes.map((node) => (
                   <NodeCard key={node.id} node={node} isArchived={activeTab === 'archived'} />
                 ))}
