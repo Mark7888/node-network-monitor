@@ -1,6 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Server, Key, LogOut } from 'lucide-react';
-import { useAuthStore } from '@/modules/auth/store/authStore';
+import { LayoutDashboard, Server, Key } from 'lucide-react';
 
 /**
  * Sidebar navigation component
@@ -8,7 +7,6 @@ import { useAuthStore } from '@/modules/auth/store/authStore';
  */
 export default function Sidebar() {
   const location = useLocation();
-  const { logout } = useAuthStore();
 
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -46,17 +44,6 @@ export default function Sidebar() {
           })}
         </ul>
       </nav>
-
-      {/* Logout */}
-      <div className="p-4 border-t border-base-300">
-        <button
-          onClick={logout}
-          className="btn btn-ghost btn-block justify-start"
-        >
-          <LogOut size={18} />
-          Logout
-        </button>
-      </div>
     </aside>
   );
 }

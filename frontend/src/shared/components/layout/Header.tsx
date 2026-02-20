@@ -1,14 +1,34 @@
+import { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '@/modules/auth/store/authStore';
 import { useTheme } from '@/shared/hooks/useTheme';
-import { User, Sun, Moon } from 'lucide-react';
+import { User, Sun, Moon, ChevronDown, LogOut } from 'lucide-react';
 
 /**
  * Header component
  * Responsive: Compact on mobile, full on desktop
  */
 export default function Header() {
-  const { username } = useAuthStore();
+  const { username, logout } = useAuthStore();
   const { theme, toggleTheme } = useTheme();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
 
   return (
     <header className="bg-base-100 shadow-sm px-3 md:px-6 py-3 md:py-4">
@@ -38,11 +58,36 @@ export default function Header() {
           </button>
 
           {/* User Info - Hidden on small mobile, shown on larger screens */}
-          <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-base-200 rounded-lg">
-            <User size={16} className="text-base-content/60 md:w-[18px] md:h-[18px]" />
-            <span className="text-xs md:text-sm font-medium truncate max-w-[100px] md:max-w-none">
-              {username || 'Admin'}
-            </span>
+          <div className="hidden sm:block relative" ref={dropdownRef}>
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="flex items-center gap-2 px-3 py-2 bg-base-200 rounded-lg hover:bg-base-300 transition-colors"
+            >
+              <User size={16} className="text-base-content/60 md:w-[18px] md:h-[18px]" />
+              <span className="text-xs md:text-sm font-medium truncate max-w-[100px] md:max-w-none">
+                {username || 'Admin'}
+              </span>
+              <ChevronDown 
+                size={16} 
+                className={`transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+
+            {/* Dropdown Menu */}
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-base-100 rounded-lg shadow-lg border border-base-300 py-2 z-50">
+                <button
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    logout();
+                  }}
+                  className="flex items-center gap-3 w-full px-4 py-2 text-sm hover:bg-base-200 transition-colors text-error"
+                >
+                  <LogOut size={18} />
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

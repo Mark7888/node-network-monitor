@@ -84,46 +84,48 @@ export default function NodeCard({ node, isArchived = false }: NodeCardProps) {
         )}
       </div>
 
-      <div className="mt-4 flex items-center gap-2">
-        <Link to={`/nodes/${node.id}`} className="flex-1 min-w-0">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <Link to={`/nodes/${node.id}`} className="flex-1 min-w-[130px]">
           <Button variant="outline" size="sm" className="w-full text-xs md:text-sm">
             View Details →
           </Button>
         </Link>
         
-        {!isArchived && (
+        <div className="flex flex-1 items-center gap-2">
+          {!isArchived && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleToggleFavorite}
+              className="flex-1 justify-center min-w-[2.5rem]"
+              title={node.favorite ? 'Remove from favorites' : 'Add to favorites'}
+            >
+              <Star size={16} className={node.favorite ? 'fill-warning text-warning' : ''} />
+            </Button>
+          )}
+          
           <Button
             variant="ghost"
             size="sm"
-            onClick={handleToggleFavorite}
-            className="px-2 min-w-[2.5rem]"
-            title={node.favorite ? 'Remove from favorites' : 'Add to favorites'}
+            onClick={handleArchiveToggle}
+            className="flex-1 justify-center min-w-[2.5rem]"
+            title={node.archived ? 'Unarchive node' : 'Archive node'}
           >
-            <Star size={16} className={node.favorite ? 'fill-warning text-warning' : ''} />
+            {node.archived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
           </Button>
-        )}
-        
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleArchiveToggle}
-          className="px-2 min-w-[2.5rem]"
-          title={node.archived ? 'Unarchive node' : 'Archive node'}
-        >
-          {node.archived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
-        </Button>
-        
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleDelete}
-          className="px-2 min-w-[2.5rem] text-error hover:bg-error/10"
-          loading={isDeleting}
-          disabled={isDeleting}
-          title="Delete node"
-        >
-          <Trash2 size={16} />
-        </Button>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDelete}
+            className="flex-1 justify-center min-w-[2.5rem] text-error hover:bg-error/10"
+            loading={isDeleting}
+            disabled={isDeleting}
+            title="Delete node"
+          >
+            <Trash2 size={16} />
+          </Button>
+        </div>
       </div>
     </Card>
   );
