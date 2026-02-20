@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -73,8 +74,9 @@ type RetentionConfig struct {
 
 // APIConfig holds API-related configuration
 type APIConfig struct {
-	RateLimit int
-	Timeout   time.Duration
+	RateLimit      int
+	Timeout        time.Duration
+	AllowedOrigins []string
 }
 
 // LoggingConfig holds logging configuration
@@ -132,6 +134,8 @@ func Load() (*Config, error) {
 	// API
 	flag.IntVar(&cfg.API.RateLimit, "rate-limit", getEnvInt("RATE_LIMIT", 100), "Requests per minute per API key")
 	flag.DurationVar(&cfg.API.Timeout, "timeout", getEnvDuration("API_TIMEOUT", 30*time.Second), "API request timeout")
+	var allowedUIDomains string
+	flag.StringVar(&allowedUIDomains, "allowed-ui-domains", getEnv("ALLOWED_UI_DOMAINS", ""), "Comma-separated list of allowed UI origins for CORS (empty = allow all)")
 
 	// Logging
 	flag.StringVar(&cfg.Logging.Level, "log-level", getEnv("LOG_LEVEL", "info"), "Log level: debug, info, warn, error")
@@ -140,6 +144,17 @@ func Load() (*Config, error) {
 	flag.BoolVar(&cfg.Logging.OutputConsole, "log-output-console", getEnvBool("LOG_OUTPUT_CONSOLE", false), "Also output logs to console")
 
 	flag.Parse()
+
+	// Parse allowed UI domains for CORS
+	if allowedUIDomains != "" {
+		parts := strings.Split(allowedUIDomains, ",")
+		for i, p := range parts {
+			parts[i] = strings.TrimSpace(p)
+		}
+		cfg.API.AllowedOrigins = parts
+	} else {
+		cfg.API.AllowedOrigins = []string{"*"}
+	}
 
 	// Validate required fields
 	if err := cfg.Validate(); err != nil {

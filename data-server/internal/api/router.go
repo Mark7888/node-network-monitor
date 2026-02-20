@@ -30,7 +30,7 @@ func SetupRouter(cfg *config.Config, database db.Database, jwtManager *auth.JWTM
 
 	// Global middleware
 	router.Use(gin.Recovery())
-	router.Use(middleware.CORS())
+	router.Use(middleware.CORS(cfg.API.AllowedOrigins))
 
 	// Rate limiter
 	rateLimiter := middleware.NewRateLimiter(cfg.API.RateLimit)
