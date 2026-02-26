@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Server, Key } from 'lucide-react';
+import { LayoutDashboard, Server } from 'lucide-react';
 
 /**
  * Sidebar navigation component
@@ -11,7 +11,6 @@ export default function Sidebar() {
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/nodes', label: 'Nodes', icon: Server },
-    { path: '/api-keys', label: 'API Keys', icon: Key },
   ];
 
   const isActive = (path: string) => location.pathname.startsWith(path);

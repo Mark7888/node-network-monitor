@@ -1,4 +1,5 @@
-import { X, User as UserIcon, LogOut } from 'lucide-react';
+import { X, User as UserIcon, LogOut, Key } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/modules/auth/store/authStore';
 
 interface ProfilePanelProps {
@@ -12,12 +13,18 @@ interface ProfilePanelProps {
  */
 export default function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
   const { username, logout } = useAuthStore();
+  const navigate = useNavigate();
 
   if (!isOpen) return null;
 
   const handleLogout = () => {
     onClose();
     logout();
+  };
+
+  const handleAPIKeys = () => {
+    onClose();
+    navigate('/api-keys');
   };
 
   return (
@@ -47,7 +54,13 @@ export default function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
         {/* Actions Section */}
         <div className="w-full max-w-sm space-y-4">
           <div className="divider"/>
-          
+          <button
+            onClick={handleAPIKeys}
+            className="btn btn-outline btn-block justify-start gap-3"
+          >
+            <Key size={20} />
+            API Keys
+          </button>          
           <button
             onClick={handleLogout}
             className="btn btn-outline btn-error btn-block justify-start gap-3"

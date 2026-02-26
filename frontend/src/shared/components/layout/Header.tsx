@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/modules/auth/store/authStore';
 import { useTheme } from '@/shared/hooks/useTheme';
-import { User, Sun, Moon, ChevronDown, LogOut } from 'lucide-react';
+import { User, Sun, Moon, ChevronDown, LogOut, Key } from 'lucide-react';
 
 /**
  * Header component
@@ -10,6 +11,7 @@ import { User, Sun, Moon, ChevronDown, LogOut } from 'lucide-react';
 export default function Header() {
   const { username, logout } = useAuthStore();
   const { theme, toggleTheme } = useTheme();
+  const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -76,6 +78,17 @@ export default function Header() {
             {/* Dropdown Menu */}
             {isDropdownOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-base-100 rounded-lg shadow-lg border border-base-300 py-2 z-50">
+                <button
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    navigate('/api-keys');
+                  }}
+                  className="flex items-center gap-3 w-full px-4 py-2 text-sm hover:bg-base-200 transition-colors"
+                >
+                  <Key size={18} />
+                  API Keys
+                </button>
+                <div className="border-t border-base-300 my-1" />
                 <button
                   onClick={() => {
                     setIsDropdownOpen(false);
