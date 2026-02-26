@@ -383,7 +383,10 @@ func (s *SQLiteDB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.
 	defer cancel()
 
 	// Get database-specific date truncation function
-	truncFunc := getDateTruncSQL(interval)
+	truncFunc, err := getDateTruncSQL(interval)
+	if err != nil {
+		return nil, fmt.Errorf("GetAggregatedMeasurements: %w", err)
+	}
 
 	// Build WHERE conditions
 	args := []interface{}{from, to}
@@ -470,24 +473,26 @@ func (s *SQLiteDB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to time.
 	return results, nil
 }
 
-// getDateTruncSQL returns the SQL for date truncation based on interval for SQLite
-func getDateTruncSQL(interval string) string {
+// getDateTruncSQL returns the SQL for date truncation based on interval for SQLite.
+// Returns an error for unrecognised intervals to prevent unvalidated strings from
+// being interpolated into a raw SQL query.
+func getDateTruncSQL(interval string) (string, error) {
 	switch interval {
 	case "5m":
 		// Truncate to 5-minute blocks
-		return "strftime('%Y-%m-%d %H:', timestamp) || printf('%02d:00', (CAST(strftime('%M', timestamp) AS INTEGER) / 5) * 5)"
+		return "strftime('%Y-%m-%d %H:', timestamp) || printf('%02d:00', (CAST(strftime('%M', timestamp) AS INTEGER) / 5) * 5)", nil
 	case "15m":
 		// Truncate to 15-minute blocks
-		return "strftime('%Y-%m-%d %H:', timestamp) || printf('%02d:00', (CAST(strftime('%M', timestamp) AS INTEGER) / 15) * 15)"
+		return "strftime('%Y-%m-%d %H:', timestamp) || printf('%02d:00', (CAST(strftime('%M', timestamp) AS INTEGER) / 15) * 15)", nil
 	case "1h":
-		return "strftime('%Y-%m-%d %H:00:00', timestamp)"
+		return "strftime('%Y-%m-%d %H:00:00', timestamp)", nil
 	case "6h":
 		// Truncate to 6-hour blocks (00:00, 06:00, 12:00, 18:00)
-		return "strftime('%Y-%m-%d', timestamp) || ' ' || printf('%02d:00:00', (CAST(strftime('%H', timestamp) AS INTEGER) / 6) * 6)"
+		return "strftime('%Y-%m-%d', timestamp) || ' ' || printf('%02d:00:00', (CAST(strftime('%H', timestamp) AS INTEGER) / 6) * 6)", nil
 	case "1d":
-		return "strftime('%Y-%m-%d 00:00:00', timestamp)"
+		return "strftime('%Y-%m-%d 00:00:00', timestamp)", nil
 	default:
-		return "strftime('%Y-%m-%d %H:00:00', timestamp)"
+		return "", fmt.Errorf("invalid interval %q: must be one of 5m, 15m, 1h, 6h, 1d", interval)
 	}
 }
 

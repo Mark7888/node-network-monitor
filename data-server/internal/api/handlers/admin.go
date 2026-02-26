@@ -121,6 +121,14 @@ func (h *AdminHandler) HandleListNodes(c *gin.Context) {
 
 	page, limit, _ = validators.ValidatePagination(page, limit)
 
+	// Validate status against known node statuses (empty means no filter)
+	if status != "" && status != "active" && status != "unreachable" && status != "inactive" {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: "Invalid status parameter. Must be one of: active, unreachable, inactive (or omit for all)",
+		})
+		return
+	}
+
 	nodes, total, err := h.db.GetAllNodes(status, page, limit)
 	if err != nil {
 		logger.Log.Error("Failed to get nodes", zap.Error(err))

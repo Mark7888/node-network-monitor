@@ -362,7 +362,10 @@ func (p *PostgresDB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to tim
 	defer cancel()
 
 	// Get database-specific date truncation function
-	truncFunc := getDateTruncSQL(interval)
+	truncFunc, err := getDateTruncSQL(interval)
+	if err != nil {
+		return nil, fmt.Errorf("GetAggregatedMeasurements: %w", err)
+	}
 
 	// Build WHERE conditions
 	whereBuilder := p.builder.
@@ -452,21 +455,23 @@ func (p *PostgresDB) GetAggregatedMeasurements(nodeIDs []uuid.UUID, from, to tim
 	return results, nil
 }
 
-// getDateTruncSQL returns the SQL for date truncation based on interval
-func getDateTruncSQL(interval string) string {
+// getDateTruncSQL returns the SQL for date truncation based on interval.
+// Returns an error for unrecognised intervals to prevent unvalidated strings from
+// being interpolated into a raw SQL query.
+func getDateTruncSQL(interval string) (string, error) {
 	switch interval {
 	case "5m":
-		return "date_trunc('hour', timestamp) + INTERVAL '5 min' * floor(EXTRACT(MINUTE FROM timestamp)::int / 5)"
+		return "date_trunc('hour', timestamp) + INTERVAL '5 min' * floor(EXTRACT(MINUTE FROM timestamp)::int / 5)", nil
 	case "15m":
-		return "date_trunc('hour', timestamp) + INTERVAL '15 min' * floor(EXTRACT(MINUTE FROM timestamp)::int / 15)"
+		return "date_trunc('hour', timestamp) + INTERVAL '15 min' * floor(EXTRACT(MINUTE FROM timestamp)::int / 15)", nil
 	case "1h":
-		return "date_trunc('hour', timestamp)"
+		return "date_trunc('hour', timestamp)", nil
 	case "6h":
-		return "date_trunc('hour', timestamp) - (EXTRACT(HOUR FROM timestamp)::int % 6) * INTERVAL '1 hour'"
+		return "date_trunc('hour', timestamp) - (EXTRACT(HOUR FROM timestamp)::int % 6) * INTERVAL '1 hour'", nil
 	case "1d":
-		return "date_trunc('day', timestamp)"
+		return "date_trunc('day', timestamp)", nil
 	default:
-		return "date_trunc('hour', timestamp)"
+		return "", fmt.Errorf("invalid interval %q: must be one of 5m, 15m, 1h, 6h, 1d", interval)
 	}
 }
 

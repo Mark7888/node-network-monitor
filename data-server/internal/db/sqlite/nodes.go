@@ -90,6 +90,12 @@ func (s *SQLiteDB) GetAllNodes(status string, page, limit int) ([]models.Node, i
 	ctx, cancel := withTimeout()
 	defer cancel()
 
+	// Validate status against known values to prevent unexpected filter behaviour.
+	// Empty string means "no filter" (return all nodes).
+	if status != "" && status != "active" && status != "unreachable" && status != "inactive" {
+		return nil, 0, fmt.Errorf("invalid status %q: must be one of active, unreachable, inactive", status)
+	}
+
 	// Build base query
 	selectQuery := s.builder.
 		Select("id", "name", "first_seen", "last_seen", "last_alive", "status", "archived", "favorite", "created_at", "updated_at").
