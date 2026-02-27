@@ -27,7 +27,7 @@ type Database interface {
 	VerifyAPIKey(plainKey string) (*models.APIKey, error)
 
 	// Nodes
-	UpsertNode(nodeID uuid.UUID, nodeName string) error
+	UpsertNode(nodeID uuid.UUID, nodeName string, nodeLocation *string) error
 	GetNodeByID(nodeID uuid.UUID) (*models.Node, error)
 	GetAllNodes(status string, page, limit int) ([]models.Node, int, error)
 	GetNodeWithStats(nodeID uuid.UUID) (*models.NodeWithStats, error)

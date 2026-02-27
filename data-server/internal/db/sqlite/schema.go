@@ -16,7 +16,7 @@ var migrationsFS embed.FS
 
 // latestMigrationVersion is the highest version number in the migrations
 // directory. Increment this constant whenever a new migration file is added.
-const latestMigrationVersion int64 = 3
+const latestMigrationVersion int64 = 4
 
 // Migrate runs database migrations using goose.
 //

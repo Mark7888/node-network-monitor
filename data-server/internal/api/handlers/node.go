@@ -38,7 +38,7 @@ func (h *NodeHandler) HandleAlive(c *gin.Context) {
 	}
 
 	// Upsert node (create if doesn't exist, update if it does)
-	err := h.db.UpsertNode(req.NodeID, req.NodeName)
+	err := h.db.UpsertNode(req.NodeID, req.NodeName, req.Location)
 	if err != nil {
 		logger.Log.Error("Failed to upsert node", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{

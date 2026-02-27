@@ -82,7 +82,7 @@ func main() {
 	if cfg.ServerURL != "" && cfg.APIKey != "" {
 		client := sync.NewClient(cfg.ServerURL, cfg.APIKey, cfg.ServerTimeout, cfg.TLSVerify, log)
 		sender = sync.NewSender(client, nodeID, cfg.NodeName, log)
-		aliveSender = sync.NewAliveSender(client, nodeID, cfg.NodeName, log)
+		aliveSender = sync.NewAliveSender(client, nodeID, cfg.NodeName, cfg.NodeLocation, log)
 		log.Info("Sync client initialized", zap.String("server_url", cfg.ServerURL))
 	} else {
 		log.Warn("Server URL or API key not provided, running in offline mode")

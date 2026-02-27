@@ -98,6 +98,7 @@ type FailedMeasurement struct {
 type AliveRequest struct {
 	NodeID    string    `json:"node_id"`
 	NodeName  string    `json:"node_name"`
+	Location  *string   `json:"location,omitempty"`
 	Timestamp time.Time `json:"timestamp"`
 }
 
