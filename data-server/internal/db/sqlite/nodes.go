@@ -20,27 +20,45 @@ func (s *SQLiteDB) UpsertNode(nodeID uuid.UUID, nodeName string, nodeLocation *s
 
 	now := time.Now().UTC()
 
-	// SQLite UPSERT using ON CONFLICT
-	query := `
-		INSERT INTO nodes (id, name, location, first_seen, last_seen, last_alive, status)
-		VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'active')
-		ON CONFLICT (id) DO UPDATE SET
-			name = excluded.name,
-			location = excluded.location,
-			last_seen = ?,
-			last_alive = ?,
-			status = 'active',
-			updated_at = ?
-	`
+	if nodeLocation != nil {
+		// Location explicitly provided: insert/update including the location column.
+		// A non-nil pointer to an empty string clears the value; a non-empty string sets it.
+		var locationVal interface{}
+		if *nodeLocation != "" {
+			locationVal = *nodeLocation
+		}
 
-	var locationVal interface{}
-	if nodeLocation != nil && *nodeLocation != "" {
-		locationVal = *nodeLocation
-	}
-
-	_, err := s.db.ExecContext(ctx, query, nodeID.String(), nodeName, locationVal, now, now, now)
-	if err != nil {
-		return fmt.Errorf("failed to upsert node: %w", err)
+		query := `
+			INSERT INTO nodes (id, name, location, first_seen, last_seen, last_alive, status)
+			VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'active')
+			ON CONFLICT (id) DO UPDATE SET
+				name = excluded.name,
+				location = excluded.location,
+				last_seen = ?,
+				last_alive = ?,
+				status = 'active',
+				updated_at = ?
+		`
+		_, err := s.db.ExecContext(ctx, query, nodeID.String(), nodeName, locationVal, now, now, now)
+		if err != nil {
+			return fmt.Errorf("failed to upsert node: %w", err)
+		}
+	} else {
+		// No location provided: do not touch the existing location value.
+		query := `
+			INSERT INTO nodes (id, name, first_seen, last_seen, last_alive, status)
+			VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'active')
+			ON CONFLICT (id) DO UPDATE SET
+				name = excluded.name,
+				last_seen = ?,
+				last_alive = ?,
+				status = 'active',
+				updated_at = ?
+		`
+		_, err := s.db.ExecContext(ctx, query, nodeID.String(), nodeName, now, now, now)
+		if err != nil {
+			return fmt.Errorf("failed to upsert node: %w", err)
+		}
 	}
 
 	return nil

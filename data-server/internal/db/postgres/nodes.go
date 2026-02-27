@@ -20,27 +20,45 @@ func (p *PostgresDB) UpsertNode(nodeID uuid.UUID, nodeName string, nodeLocation 
 
 	now := time.Now().UTC()
 
-	var locationVal interface{}
-	if nodeLocation != nil && *nodeLocation != "" {
-		locationVal = *nodeLocation
-	}
+	if nodeLocation != nil {
+		// Location explicitly provided: insert/update including the location column.
+		// A non-nil pointer to an empty string clears the value; a non-empty string sets it.
+		var locationVal interface{}
+		if *nodeLocation != "" {
+			locationVal = *nodeLocation
+		}
 
-	// PostgreSQL UPSERT using ON CONFLICT
-	query := `
-		INSERT INTO nodes (id, name, location, first_seen, last_seen, last_alive, status)
-		VALUES ($1, $2, $3, NOW(), NOW(), NOW(), 'active')
-		ON CONFLICT (id) DO UPDATE SET
-			name = EXCLUDED.name,
-			location = EXCLUDED.location,
-			last_seen = $4,
-			last_alive = $4,
-			status = 'active',
-			updated_at = $4
-	`
-
-	_, err := p.db.ExecContext(ctx, query, nodeID, nodeName, locationVal, now)
-	if err != nil {
-		return fmt.Errorf("failed to upsert node: %w", err)
+		query := `
+			INSERT INTO nodes (id, name, location, first_seen, last_seen, last_alive, status)
+			VALUES ($1, $2, $3, NOW(), NOW(), NOW(), 'active')
+			ON CONFLICT (id) DO UPDATE SET
+				name = EXCLUDED.name,
+				location = EXCLUDED.location,
+				last_seen = $4,
+				last_alive = $4,
+				status = 'active',
+				updated_at = $4
+		`
+		_, err := p.db.ExecContext(ctx, query, nodeID, nodeName, locationVal, now)
+		if err != nil {
+			return fmt.Errorf("failed to upsert node: %w", err)
+		}
+	} else {
+		// No location provided: do not touch the existing location value.
+		query := `
+			INSERT INTO nodes (id, name, first_seen, last_seen, last_alive, status)
+			VALUES ($1, $2, NOW(), NOW(), NOW(), 'active')
+			ON CONFLICT (id) DO UPDATE SET
+				name = EXCLUDED.name,
+				last_seen = $3,
+				last_alive = $3,
+				status = 'active',
+				updated_at = $3
+		`
+		_, err := p.db.ExecContext(ctx, query, nodeID, nodeName, now)
+		if err != nil {
+			return fmt.Errorf("failed to upsert node: %w", err)
+		}
 	}
 
 	return nil
