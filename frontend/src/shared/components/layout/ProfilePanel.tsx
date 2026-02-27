@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { X, User as UserIcon, LogOut, Key } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/modules/auth/store/authStore';
+import { getHealth } from '@/shared/services/healthService';
 
 interface ProfilePanelProps {
   isOpen: boolean;
@@ -14,6 +16,19 @@ interface ProfilePanelProps {
 export default function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
   const { username, logout } = useAuthStore();
   const navigate = useNavigate();
+  const [version, setVersion] = useState<string>('');
+
+  useEffect(() => {
+    const fetchVersion = async () => {
+      try {
+        const health = await getHealth();
+        setVersion(health.version);
+      } catch {
+        // Silently fail
+      }
+    };
+    fetchVersion();
+  }, []);
 
   if (!isOpen) return null;
 
@@ -69,6 +84,12 @@ export default function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
             Logout
           </button>
         </div>
+
+        {version && (
+          <p className="mt-8 text-xs text-base-content/40 font-mono">
+            Version: {version}
+          </p>
+        )}
       </div>
     </div>
   );
