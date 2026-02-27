@@ -13,7 +13,7 @@ export function useAutoRefresh(callback: () => void, interval: number, enabled: 
 
   // Setup interval
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || interval <= 0) return;
 
     const tick = () => savedCallback.current();
     const id = setInterval(tick, interval);
