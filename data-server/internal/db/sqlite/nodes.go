@@ -388,13 +388,15 @@ func (s *SQLiteDB) GetNodeCounts() (total, active, unreachable, inactive int, er
 	ctx, cancel := withTimeout()
 	defer cancel()
 
-	// SQLite doesn't support FILTER, so we use CASE WHEN
+	// SQLite doesn't support FILTER, so we use CASE WHEN.
+	// COALESCE is required because SUM() returns NULL (not 0) on an empty table,
+	// which cannot be scanned into an int.
 	query := `
 		SELECT
 			COUNT(*) as total,
-			SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
-			SUM(CASE WHEN status = 'unreachable' THEN 1 ELSE 0 END) as unreachable,
-			SUM(CASE WHEN status = 'inactive' THEN 1 ELSE 0 END) as inactive
+			COALESCE(SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END), 0) as active,
+			COALESCE(SUM(CASE WHEN status = 'unreachable' THEN 1 ELSE 0 END), 0) as unreachable,
+			COALESCE(SUM(CASE WHEN status = 'inactive' THEN 1 ELSE 0 END), 0) as inactive
 		FROM nodes
 		WHERE archived = 0
 	`
