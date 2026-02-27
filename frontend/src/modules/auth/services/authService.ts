@@ -1,4 +1,4 @@
-import api from '@/core/api/axiosConfig';
+import { apiClient } from '@/core/api/apiClient';
 import { LoginRequest, LoginResponse } from '../types/auth.types';
 
 /**
@@ -9,15 +9,13 @@ import { LoginRequest, LoginResponse } from '../types/auth.types';
  * Login with username and password
  */
 export async function login(credentials: LoginRequest): Promise<LoginResponse> {
-  const response = await api.post<LoginResponse>('/api/v1/admin/login', credentials);
-  return response.data;
+  return apiClient.login(credentials);
 }
 
 /**
- * Logout (client-side only - clear token)
+ * Logout (client-side only — clear token)
  */
 export function logout(): void {
-  // Could call a logout endpoint here if needed
   localStorage.removeItem('token');
   localStorage.removeItem('username');
 }

@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import Layout from '@/shared/components/layout/Layout';
 import ProtectedRoute from '@/modules/auth/components/ProtectedRoute';
 import Spinner from '@/shared/components/ui/Spinner';
+import { isMockMode } from '@/core/config/env';
 
 // Lazy load pages for code splitting
 const LoginPage = lazy(() => import('@/modules/auth/components/LoginPage'));
@@ -12,16 +13,19 @@ const NodeDetailsPage = lazy(() => import('@/modules/nodes/components/NodeDetail
 const APIKeysPage = lazy(() => import('@/modules/api-keys/components/APIKeysPage'));
 
 /**
- * Application routes configuration
+ * Application routes configuration.
+ * In mock mode the /login route redirects straight to the dashboard.
  */
 const router = createBrowserRouter([
   {
     path: '/login',
-    element: (
-      <Suspense fallback={<Spinner fullScreen />}>
-        <LoginPage />
-      </Suspense>
-    ),
+    element: isMockMode
+      ? <Navigate to="/dashboard" replace />
+      : (
+        <Suspense fallback={<Spinner fullScreen />}>
+          <LoginPage />
+        </Suspense>
+      ),
   },
   {
     path: '/',

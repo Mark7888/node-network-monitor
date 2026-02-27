@@ -11,6 +11,9 @@ README.md
 .env.*
 !.env.example
 
+# Mock / demo data — only used by the GitHub Pages static build, not the Docker image
+public/demo-data.json
+
 # Docker files
 Dockerfile
 docker-compose.yml

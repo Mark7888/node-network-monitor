@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { LoginRequest } from '../types/auth.types';
 import * as authService from '../services/authService';
 import { STORAGE_KEYS } from '@/shared/utils/constants';
+import { isMockMode } from '@/core/config/env';
 
 interface AuthStore {
   token: string | null;
@@ -9,7 +10,7 @@ interface AuthStore {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  
+
   login: (credentials: LoginRequest) => Promise<void>;
   logout: () => void;
   checkAuth: () => void;
@@ -17,16 +18,21 @@ interface AuthStore {
 }
 
 /**
- * Authentication store using Zustand
+ * Authentication store using Zustand.
+ * In mock mode the user is automatically considered authenticated (no login required).
  */
 export const useAuthStore = create<AuthStore>((set) => ({
-  token: localStorage.getItem(STORAGE_KEYS.TOKEN),
-  username: localStorage.getItem(STORAGE_KEYS.USERNAME),
-  isAuthenticated: !!localStorage.getItem(STORAGE_KEYS.TOKEN),
+  token:           isMockMode ? 'mock-token' : localStorage.getItem(STORAGE_KEYS.TOKEN),
+  username:        isMockMode ? 'demo'       : localStorage.getItem(STORAGE_KEYS.USERNAME),
+  isAuthenticated: isMockMode ? true         : !!localStorage.getItem(STORAGE_KEYS.TOKEN),
   isLoading: false,
   error: null,
 
   login: async (credentials) => {
+    if (isMockMode) {
+      set({ token: 'mock-token', username: 'demo', isAuthenticated: true, isLoading: false, error: null });
+      return;
+    }
     set({ isLoading: true, error: null });
     try {
       const data = await authService.login(credentials);
@@ -51,6 +57,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
   },
 
   logout: () => {
+    if (isMockMode) return; // no-op in demo mode
     authService.logout();
     set({
       token: null,
@@ -62,7 +69,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
   },
 
   checkAuth: () => {
-    const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
+    if (isMockMode) return;
+    const token    = localStorage.getItem(STORAGE_KEYS.TOKEN);
     const username = localStorage.getItem(STORAGE_KEYS.USERNAME);
     set({
       token,

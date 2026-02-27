@@ -1,4 +1,4 @@
-import api from '@/core/api/axiosConfig';
+import { apiClient } from '@/core/api/apiClient';
 import { NodesResponse, NodeDetails } from '../types/node.types';
 import { MeasurementsResponse, MeasurementQueryParams } from '@/modules/measurements/types/measurement.types';
 
@@ -6,53 +6,29 @@ import { MeasurementsResponse, MeasurementQueryParams } from '@/modules/measurem
  * Node API service
  */
 
-/**
- * Get all nodes
- */
 export async function getNodes(): Promise<NodesResponse> {
-  const response = await api.get<NodesResponse>('/api/v1/admin/nodes');
-  return response.data;
+  return apiClient.getNodes();
 }
 
-/**
- * Get single node details
- */
 export async function getNodeDetails(nodeId: string): Promise<NodeDetails> {
-  const response = await api.get<NodeDetails>(`/api/v1/admin/nodes/${nodeId}`);
-  return response.data;
+  return apiClient.getNodeDetails(nodeId);
 }
 
-/**
- * Get measurements for a specific node
- */
 export async function getNodeMeasurements(
   nodeId: string,
-  params?: MeasurementQueryParams
+  params?: MeasurementQueryParams,
 ): Promise<MeasurementsResponse> {
-  const response = await api.get<MeasurementsResponse>(
-    `/api/v1/admin/nodes/${nodeId}/measurements`,
-    { params }
-  );
-  return response.data;
+  return apiClient.getNodeMeasurements(nodeId, params);
 }
 
-/**
- * Archive or unarchive a node
- */
 export async function archiveNode(nodeId: string, archived: boolean): Promise<void> {
-  await api.patch(`/api/v1/admin/nodes/${nodeId}/archive`, { archived });
+  return apiClient.archiveNode(nodeId, archived);
 }
 
-/**
- * Set or remove favorite status of a node
- */
 export async function setNodeFavorite(nodeId: string, favorite: boolean): Promise<void> {
-  await api.patch(`/api/v1/admin/nodes/${nodeId}/favorite`, { favorite });
+  return apiClient.setNodeFavorite(nodeId, favorite);
 }
 
-/**
- * Delete a node and all its measurements
- */
 export async function deleteNode(nodeId: string): Promise<void> {
-  await api.delete(`/api/v1/admin/nodes/${nodeId}`);
+  return apiClient.deleteNode(nodeId);
 }

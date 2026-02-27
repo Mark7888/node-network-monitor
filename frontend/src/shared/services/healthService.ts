@@ -1,4 +1,4 @@
-import api from '@/core/api/axiosConfig';
+import { apiClient } from '@/core/api/apiClient';
 import { HealthResponse } from '../types/common.types';
 
 /**
@@ -9,8 +9,7 @@ import { HealthResponse } from '../types/common.types';
  * Fetch health status and version info
  */
 export const getHealth = async (): Promise<HealthResponse> => {
-  const response = await api.get<HealthResponse>('/health');
-  return response.data;
+  return apiClient.getHealth();
 };
 
 export default {
