@@ -19,6 +19,7 @@ export default function BaseChart({
     <div className={`chart-container ${className}`}>
       <ReactECharts
         option={option}
+        notMerge={true}
         style={{ height, width: '100%' }}
         opts={{ renderer: 'canvas' }}
       />
