@@ -41,6 +41,7 @@ export function App() {
       <AppRouter />
       <Toaster
         position="top-right"
+        containerStyle={{ top: 84 }}
         toastOptions={{
           duration: 4000,
           style: {
