@@ -57,7 +57,19 @@ export const useAuthStore = create<AuthStore>((set) => ({
   },
 
   logout: () => {
-    if (isMockMode) return; // no-op in demo mode
+    if (isMockMode) {
+      // In mock mode, skip backend logout and navigation but ensure any real
+      // credentials (if present) are cleared from storage and state.
+      localStorage.removeItem(STORAGE_KEYS.TOKEN);
+      localStorage.removeItem(STORAGE_KEYS.USERNAME);
+      set({
+        token: 'mock-token',
+        username: 'demo',
+        isAuthenticated: true,
+        error: null,
+      });
+      return;
+    }
     authService.logout();
     set({
       token: null,
