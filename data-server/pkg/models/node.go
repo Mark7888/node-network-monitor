@@ -19,6 +19,7 @@ const (
 type Node struct {
 	ID        uuid.UUID  `json:"id" db:"id"`
 	Name      string     `json:"name" db:"name"`
+	Location  *string    `json:"location,omitempty" db:"location"`
 	FirstSeen time.Time  `json:"first_seen" db:"first_seen"`
 	LastSeen  time.Time  `json:"last_seen" db:"last_seen"`
 	LastAlive time.Time  `json:"last_alive" db:"last_alive"`
@@ -62,6 +63,7 @@ type MeasurementSummary struct {
 type AliveRequest struct {
 	NodeID    uuid.UUID `json:"node_id" binding:"required"`
 	NodeName  string    `json:"node_name" binding:"required"`
+	Location  *string   `json:"location,omitempty"`
 	Timestamp time.Time `json:"timestamp" binding:"required"`
 }
 

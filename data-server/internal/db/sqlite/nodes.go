@@ -14,7 +14,7 @@ import (
 )
 
 // UpsertNode creates or updates a node (used for alive signals and self-registration)
-func (s *SQLiteDB) UpsertNode(nodeID uuid.UUID, nodeName string) error {
+func (s *SQLiteDB) UpsertNode(nodeID uuid.UUID, nodeName string, nodeLocation *string) error {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
@@ -22,17 +22,23 @@ func (s *SQLiteDB) UpsertNode(nodeID uuid.UUID, nodeName string) error {
 
 	// SQLite UPSERT using ON CONFLICT
 	query := `
-		INSERT INTO nodes (id, name, first_seen, last_seen, last_alive, status)
-		VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'active')
+		INSERT INTO nodes (id, name, location, first_seen, last_seen, last_alive, status)
+		VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'active')
 		ON CONFLICT (id) DO UPDATE SET
 			name = excluded.name,
+			location = excluded.location,
 			last_seen = ?,
 			last_alive = ?,
 			status = 'active',
 			updated_at = ?
 	`
 
-	_, err := s.db.ExecContext(ctx, query, nodeID.String(), nodeName, now, now, now)
+	var locationVal interface{}
+	if nodeLocation != nil && *nodeLocation != "" {
+		locationVal = *nodeLocation
+	}
+
+	_, err := s.db.ExecContext(ctx, query, nodeID.String(), nodeName, locationVal, now, now, now)
 	if err != nil {
 		return fmt.Errorf("failed to upsert node: %w", err)
 	}
@@ -46,7 +52,7 @@ func (s *SQLiteDB) GetNodeByID(nodeID uuid.UUID) (*models.Node, error) {
 	defer cancel()
 
 	query, args, err := s.builder.
-		Select("id", "name", "first_seen", "last_seen", "last_alive", "status", "archived", "favorite", "created_at", "updated_at").
+		Select("id", "name", "location", "first_seen", "last_seen", "last_alive", "status", "archived", "favorite", "created_at", "updated_at").
 		From("nodes").
 		Where(sq.Eq{"id": nodeID.String()}).
 		ToSql()
@@ -61,6 +67,7 @@ func (s *SQLiteDB) GetNodeByID(nodeID uuid.UUID) (*models.Node, error) {
 	err = s.db.QueryRowContext(ctx, query, args...).Scan(
 		&idStr,
 		&node.Name,
+		&node.Location,
 		&node.FirstSeen,
 		&node.LastSeen,
 		&node.LastAlive,
@@ -98,7 +105,7 @@ func (s *SQLiteDB) GetAllNodes(status string, page, limit int) ([]models.Node, i
 
 	// Build base query
 	selectQuery := s.builder.
-		Select("id", "name", "first_seen", "last_seen", "last_alive", "status", "archived", "favorite", "created_at", "updated_at").
+		Select("id", "name", "location", "first_seen", "last_seen", "last_alive", "status", "archived", "favorite", "created_at", "updated_at").
 		From("nodes")
 
 	countQuery := s.builder.Select("COUNT(*)").From("nodes")
@@ -146,6 +153,7 @@ func (s *SQLiteDB) GetAllNodes(status string, page, limit int) ([]models.Node, i
 		err := rows.Scan(
 			&idStr,
 			&node.Name,
+			&node.Location,
 			&node.FirstSeen,
 			&node.LastSeen,
 			&node.LastAlive,

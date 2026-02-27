@@ -12,7 +12,8 @@ import (
 // Config represents application configuration
 type Config struct {
 	// Node configuration
-	NodeName string
+	NodeName     string
+	NodeLocation string
 
 	// Server configuration
 	ServerURL     string
@@ -54,6 +55,7 @@ func Load() *Config {
 
 	// Define flags using pflag
 	pflag.String("node-name", getHostname(), "Human-readable node name")
+	pflag.String("node-location", "", "Node location (e.g., 'New York, USA')")
 	pflag.String("server-url", "", "Data server URL (HTTPS recommended)")
 	pflag.String("api-key", "", "API key for authentication")
 	pflag.Duration("server-timeout", 30*time.Second, "HTTP request timeout")
@@ -111,6 +113,7 @@ func Load() *Config {
 	// Map environment variables to config keys
 	// Viper will automatically look for SPEEDTEST_NODE_NAME, etc.
 	v.BindEnv("node-name", "SPEEDTEST_NODE_NAME")
+	v.BindEnv("node-location", "SPEEDTEST_NODE_LOCATION")
 	v.BindEnv("server-url", "SPEEDTEST_SERVER_URL")
 	v.BindEnv("api-key", "SPEEDTEST_SERVER_API_KEY")
 	v.BindEnv("server-timeout", "SPEEDTEST_SERVER_TIMEOUT")
@@ -131,6 +134,7 @@ func Load() *Config {
 	// Build config from viper
 	cfg := &Config{
 		NodeName:         v.GetString("node-name"),
+		NodeLocation:     v.GetString("node-location"),
 		ServerURL:        v.GetString("server-url"),
 		APIKey:           v.GetString("api-key"),
 		ServerTimeout:    v.GetDuration("server-timeout"),

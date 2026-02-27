@@ -11,19 +11,21 @@ import (
 
 // AliveSender handles sending alive/keepalive signals to the server
 type AliveSender struct {
-	client   *Client
-	nodeID   string
-	nodeName string
-	logger   *zap.Logger
+	client       *Client
+	nodeID       string
+	nodeName     string
+	nodeLocation string
+	logger       *zap.Logger
 }
 
 // NewAliveSender creates a new alive sender
-func NewAliveSender(client *Client, nodeID, nodeName string, logger *zap.Logger) *AliveSender {
+func NewAliveSender(client *Client, nodeID, nodeName, nodeLocation string, logger *zap.Logger) *AliveSender {
 	return &AliveSender{
-		client:   client,
-		nodeID:   nodeID,
-		nodeName: nodeName,
-		logger:   logger,
+		client:       client,
+		nodeID:       nodeID,
+		nodeName:     nodeName,
+		nodeLocation: nodeLocation,
+		logger:       logger,
 	}
 }
 
@@ -33,6 +35,10 @@ func (a *AliveSender) SendAlive() error {
 		NodeID:    a.nodeID,
 		NodeName:  a.nodeName,
 		Timestamp: time.Now().UTC(),
+	}
+
+	if a.nodeLocation != "" {
+		request.Location = &a.nodeLocation
 	}
 
 	respData, err := a.client.Post("/api/v1/node/alive", request)

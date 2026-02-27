@@ -38,7 +38,7 @@ func (h *MeasurementHandler) HandleSubmitMeasurements(c *gin.Context) {
 	}
 
 	// Ensure node exists
-	err := h.db.UpsertNode(req.NodeID, req.NodeName)
+	err := h.db.UpsertNode(req.NodeID, req.NodeName, nil)
 	if err != nil {
 		logger.Log.Error("Failed to upsert node", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
@@ -100,7 +100,7 @@ func (h *MeasurementHandler) HandleSubmitFailedMeasurements(c *gin.Context) {
 	}
 
 	// Ensure node exists
-	err := h.db.UpsertNode(req.NodeID, req.NodeName)
+	err := h.db.UpsertNode(req.NodeID, req.NodeName, nil)
 	if err != nil {
 		logger.Log.Error("Failed to upsert node", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{

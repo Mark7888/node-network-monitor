@@ -14,25 +14,31 @@ import (
 )
 
 // UpsertNode creates or updates a node (used for alive signals and self-registration)
-func (p *PostgresDB) UpsertNode(nodeID uuid.UUID, nodeName string) error {
+func (p *PostgresDB) UpsertNode(nodeID uuid.UUID, nodeName string, nodeLocation *string) error {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
 	now := time.Now().UTC()
 
+	var locationVal interface{}
+	if nodeLocation != nil && *nodeLocation != "" {
+		locationVal = *nodeLocation
+	}
+
 	// PostgreSQL UPSERT using ON CONFLICT
 	query := `
-		INSERT INTO nodes (id, name, first_seen, last_seen, last_alive, status)
-		VALUES ($1, $2, NOW(), NOW(), NOW(), 'active')
+		INSERT INTO nodes (id, name, location, first_seen, last_seen, last_alive, status)
+		VALUES ($1, $2, $3, NOW(), NOW(), NOW(), 'active')
 		ON CONFLICT (id) DO UPDATE SET
 			name = EXCLUDED.name,
-			last_seen = $3,
-			last_alive = $3,
+			location = EXCLUDED.location,
+			last_seen = $4,
+			last_alive = $4,
 			status = 'active',
-			updated_at = $3
+			updated_at = $4
 	`
 
-	_, err := p.db.ExecContext(ctx, query, nodeID, nodeName, now)
+	_, err := p.db.ExecContext(ctx, query, nodeID, nodeName, locationVal, now)
 	if err != nil {
 		return fmt.Errorf("failed to upsert node: %w", err)
 	}
@@ -46,7 +52,7 @@ func (p *PostgresDB) GetNodeByID(nodeID uuid.UUID) (*models.Node, error) {
 	defer cancel()
 
 	query, args, err := p.builder.
-		Select("id", "name", "first_seen", "last_seen", "last_alive", "status", "archived", "favorite", "created_at", "updated_at").
+		Select("id", "name", "location", "first_seen", "last_seen", "last_alive", "status", "archived", "favorite", "created_at", "updated_at").
 		From("nodes").
 		Where(sq.Eq{"id": nodeID}).
 		ToSql()
@@ -58,6 +64,7 @@ func (p *PostgresDB) GetNodeByID(nodeID uuid.UUID) (*models.Node, error) {
 	err = p.db.QueryRowContext(ctx, query, args...).Scan(
 		&node.ID,
 		&node.Name,
+		&node.Location,
 		&node.FirstSeen,
 		&node.LastSeen,
 		&node.LastAlive,
@@ -91,7 +98,7 @@ func (p *PostgresDB) GetAllNodes(status string, page, limit int) ([]models.Node,
 
 	// Build base query
 	selectQuery := p.builder.
-		Select("id", "name", "first_seen", "last_seen", "last_alive", "status", "archived", "favorite", "created_at", "updated_at").
+		Select("id", "name", "location", "first_seen", "last_seen", "last_alive", "status", "archived", "favorite", "created_at", "updated_at").
 		From("nodes")
 
 	countQuery := p.builder.Select("COUNT(*)").From("nodes")
@@ -136,6 +143,7 @@ func (p *PostgresDB) GetAllNodes(status string, page, limit int) ([]models.Node,
 		err := rows.Scan(
 			&node.ID,
 			&node.Name,
+			&node.Location,
 			&node.FirstSeen,
 			&node.LastSeen,
 			&node.LastAlive,
