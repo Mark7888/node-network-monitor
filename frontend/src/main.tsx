@@ -12,7 +12,9 @@ import './index.css';
  */
 if ('serviceWorker' in navigator && import.meta.env.PROD && import.meta.env.VITE_MOCK_MODE !== 'true') {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    // Use BASE_URL so the path is correct even when the app is deployed
+    // to a sub-directory (e.g. /node-network-monitor/ on GitHub Pages).
+    navigator.serviceWorker.register(import.meta.env.BASE_URL + 'sw.js')
       .then((registration) => {
         console.log('SW registered:', registration);
       })

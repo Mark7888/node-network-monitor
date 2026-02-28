@@ -11,6 +11,14 @@ export default defineConfig(({ mode }) => ({
    * (e.g. /network-measure-app/).  Falls back to '/' for local testing.
    */
   base: mode === 'mock' ? (process.env.VITE_BASE_PATH ?? '/') : '/',
+  /**
+   * Bake VITE_MOCK_MODE directly into the bundle for mock builds so Rollup
+   * can statically analyse and tree-shake all real-API code paths.
+   * This is more reliable than relying solely on .env.mock being loaded.
+   */
+  define: mode === 'mock' ? {
+    'import.meta.env.VITE_MOCK_MODE': JSON.stringify('true'),
+  } : {},
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
