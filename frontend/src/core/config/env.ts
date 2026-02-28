@@ -19,6 +19,12 @@ declare global {
 // Check if runtime config exists (Docker production), otherwise use build-time env vars (dev)
 const runtimeConfig = typeof window !== 'undefined' ? window.runtimeConfig : undefined;
 
+/**
+ * When VITE_MOCK_MODE=true the app uses the mock API client (no backend required).
+ * Login is skipped and all data comes from public/demo-data.json held in memory.
+ */
+export const isMockMode = import.meta.env.VITE_MOCK_MODE === 'true';
+
 export const env = {
   apiUrl: runtimeConfig?.apiUrl || import.meta.env.VITE_API_URL || 'http://localhost:8080',
   refreshInterval: runtimeConfig?.refreshInterval || parseInt(import.meta.env.VITE_REFRESH_INTERVAL || '10000', 10),
@@ -26,6 +32,7 @@ export const env = {
   debug: runtimeConfig?.debug ?? (import.meta.env.VITE_DEBUG === 'true'),
   isDevelopment: import.meta.env.MODE === 'development',
   isProduction: import.meta.env.MODE === 'production',
+  isMockMode,
 } as const;
 
 export default env;

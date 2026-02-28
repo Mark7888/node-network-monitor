@@ -15,6 +15,7 @@ export function useMeasurements(timeRange: TimeRange, nodeIds?: string[], hideAr
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
+    setData([]);         // Clear stale data immediately so charts don't show old range points
     setError(null);
 
     try {

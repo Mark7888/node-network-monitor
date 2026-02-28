@@ -3,8 +3,14 @@ import react from '@vitejs/plugin-react'
 import { fileURLToPath } from 'node:url'
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
+  /**
+   * For the mock/demo build we read VITE_BASE_PATH from the environment so the
+   * GitHub Actions workflow can inject the GitHub Pages sub-path at build time
+   * (e.g. /network-measure-app/).  Falls back to '/' for local testing.
+   */
+  base: mode === 'mock' ? (process.env.VITE_BASE_PATH ?? '/') : '/',
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -17,4 +23,4 @@ export default defineConfig({
     port: 5173,
     host: true,
   },
-})
+}))

@@ -1,12 +1,16 @@
 import api from './axiosConfig';
 import { showToast } from '@/shared/services/toastService';
+import { isMockMode } from '@/core/config/env';
 
 /**
- * Setup axios interceptors for authentication and error handling
+ * Setup axios interceptors for authentication and error handling.
+ * Skipped in mock mode (no HTTP calls are made).
  */
 export const setupInterceptors = (
   onUnauthorized: () => void
 ) => {
+  if (isMockMode) return;
+
   // Request interceptor: Add auth token to requests
   api.interceptors.request.use(
     (config) => {
@@ -36,7 +40,7 @@ export const setupInterceptors = (
       } else if (!error.response) {
         showToast.error('Network error. Please check your connection.');
       }
-      
+
       return Promise.reject(error);
     }
   );

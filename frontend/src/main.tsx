@@ -2,14 +2,15 @@ import { StrictMode, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { AppRouter } from './core/router/routes';
 import { setupInterceptors } from './core/api/interceptors';
+import { initialiseApiClient } from './core/api/apiClient';
 import { useThemeStore } from './shared/store/themeStore';
 import { Toaster } from 'react-hot-toast';
 import './index.css';
 
 /**
- * Register Service Worker for PWA
+ * Register Service Worker for PWA (only in real production builds, not the demo).
  */
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+if ('serviceWorker' in navigator && import.meta.env.PROD && import.meta.env.VITE_MOCK_MODE !== 'true') {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {
@@ -68,8 +69,27 @@ export function App() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>
-);
+/**
+ * Async bootstrap: initialise the API client (loads mock data if needed) before mounting React.
+ */
+async function bootstrap() {
+  await initialiseApiClient();
+
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <App />
+    </StrictMode>
+  );
+}
+
+bootstrap().catch((err) => {
+  console.error('Failed to bootstrap application:', err);
+  // Show a minimal error message in the DOM so the user isn't left with a blank screen
+  const root = document.getElementById('root');
+  if (root) {
+    root.innerHTML = `<div style="color:red;padding:2rem;font-family:sans-serif">
+      <h2>Failed to load demo data</h2>
+      <p>${err instanceof Error ? err.message : String(err)}</p>
+    </div>`;
+  }
+});
