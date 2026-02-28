@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import Layout from '@/shared/components/layout/Layout';
 import ProtectedRoute from '@/modules/auth/components/ProtectedRoute';
 import Spinner from '@/shared/components/ui/Spinner';
+import ErrorPage from '@/shared/components/ErrorPage';
 import { isMockMode } from '@/core/config/env';
 
 // Lazy load pages for code splitting
@@ -19,6 +20,7 @@ const APIKeysPage = lazy(() => import('@/modules/api-keys/components/APIKeysPage
 const router = createBrowserRouter([
   {
     path: '/login',
+    errorElement: <ErrorPage />,
     element: isMockMode
       ? <Navigate to="/dashboard" replace />
       : (
@@ -29,6 +31,7 @@ const router = createBrowserRouter([
   },
   {
     path: '/',
+    errorElement: <ErrorPage />,
     element: (
       <ProtectedRoute>
         <Layout />
@@ -70,6 +73,11 @@ const router = createBrowserRouter([
             <APIKeysPage />
           </Suspense>
         ),
+      },
+      // Catch-all — renders the error page for any unknown child path
+      {
+        path: '*',
+        element: <ErrorPage />,
       },
     ],
   },
