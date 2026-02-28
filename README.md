@@ -1,5 +1,7 @@
 # Network Speed Measurement System
 
+> **Live Demo:** Check out the UI at [mark7888.github.io/node-network-monitor](https://mark7888.github.io/node-network-monitor/)
+
 This is a simple system to monitor your internet speed over time. It runs speedtests automatically, stores the results, and shows you nice charts in a web dashboard.
 
 ## What does it do?

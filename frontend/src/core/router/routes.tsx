@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, createHashRouter, Navigate, RouterProvider } from 'react-router-dom';
 import Layout from '@/shared/components/layout/Layout';
 import ProtectedRoute from '@/modules/auth/components/ProtectedRoute';
 import Spinner from '@/shared/components/ui/Spinner';
@@ -16,8 +16,14 @@ const APIKeysPage = lazy(() => import('@/modules/api-keys/components/APIKeysPage
 /**
  * Application routes configuration.
  * In mock mode the /login route redirects straight to the dashboard.
+ *
+ * Mock builds use createHashRouter so the app works correctly on GitHub Pages
+ * (a static file host that can't serve History-API paths). Hash-based URLs
+ * (#/dashboard) are never sent to the server, so GitHub Pages always returns
+ * index.html regardless of the current route.
+ * The real/production build uses the standard browser-history router.
  */
-const router = createBrowserRouter([
+const routeConfig = [
   {
     path: '/login',
     errorElement: <ErrorPage />,
@@ -81,7 +87,11 @@ const router = createBrowserRouter([
       },
     ],
   },
-]);
+];
+
+const router = isMockMode
+  ? createHashRouter(routeConfig)
+  : createBrowserRouter(routeConfig);
 
 /**
  * Router component wrapper
