@@ -7,12 +7,12 @@
       "status": "active",
       "location": "London, UK",
       "first_seen": -3628800,
-      "last_seen": -7200,
-      "last_alive": -7200,
+      "last_seen": -50,
+      "last_alive": -50,
       "archived": false,
       "favorite": true,
       "created_at": -3628800,
-      "updated_at": -7200
+      "updated_at": -50
     },
     {
       "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
@@ -20,12 +20,12 @@
       "status": "active",
       "location": "New York, US",
       "first_seen": -3283200,
-      "last_seen": -9000,
-      "last_alive": -9000,
+      "last_seen": -90,
+      "last_alive": -90,
       "archived": false,
       "favorite": false,
       "created_at": -3283200,
-      "updated_at": -9000
+      "updated_at": -90
     },
     {
       "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
@@ -46,12 +46,12 @@
       "status": "unreachable",
       "location": "Singapore, SG",
       "first_seen": -1728000,
-      "last_seen": -518400,
-      "last_alive": -604800,
+      "last_seen": -5400,
+      "last_alive": -5400,
       "archived": true,
       "favorite": false,
       "created_at": -1728000,
-      "updated_at": -518400
+      "updated_at": -5400
     }
   ],
   "measurements": {
