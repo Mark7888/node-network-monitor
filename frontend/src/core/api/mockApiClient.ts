@@ -16,6 +16,7 @@ import {
   UpdateAPIKeyRequest,
 } from '@/modules/api-keys/types/apiKey.types';
 import { DashboardSummary } from '@/modules/dashboard/types/dashboard.types';
+import { HealthResponse } from '@/shared/types/common.types';
 
 // ── Internal state ────────────────────────────────────────────────────────────
 
@@ -195,10 +196,7 @@ function computeAggregated(params: MeasurementQueryParams): AggregatedDataRespon
   }
 
   const data: AggregatedMeasurement[] = Array.from(buckets.values())
-    .map(({ _count: _c, ...rest }) => {
-      void _c;
-      return rest as AggregatedMeasurement;
-    })
+    .map(({ _count: _, ...rest }) => rest as AggregatedMeasurement)
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
   return { data };
@@ -412,7 +410,7 @@ export const mockApiClient: IApiClient = {
 
   // ── Health ───────────────────────────────────────────────────────────────
 
-  async getHealth() {
+  async getHealth(): Promise<HealthResponse> {
     return {
       status: 'healthy',
       database: 'connected',

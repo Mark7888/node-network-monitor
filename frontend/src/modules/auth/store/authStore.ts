@@ -22,9 +22,9 @@ interface AuthStore {
  * In mock mode the user is automatically considered authenticated (no login required).
  */
 export const useAuthStore = create<AuthStore>((set) => ({
-  token:           isMockMode ? 'mock-token' : localStorage.getItem(STORAGE_KEYS.TOKEN),
-  username:        isMockMode ? 'demo'       : localStorage.getItem(STORAGE_KEYS.USERNAME),
-  isAuthenticated: isMockMode ? true         : !!localStorage.getItem(STORAGE_KEYS.TOKEN),
+  token: isMockMode ? 'mock-token' : localStorage.getItem(STORAGE_KEYS.TOKEN),
+  username: isMockMode ? 'demo' : localStorage.getItem(STORAGE_KEYS.USERNAME),
+  isAuthenticated: isMockMode ? true : !!localStorage.getItem(STORAGE_KEYS.TOKEN),
   isLoading: false,
   error: null,
 
@@ -82,7 +82,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   checkAuth: () => {
     if (isMockMode) return;
-    const token    = localStorage.getItem(STORAGE_KEYS.TOKEN);
+    const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
     const username = localStorage.getItem(STORAGE_KEYS.USERNAME);
     set({
       token,

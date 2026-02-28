@@ -29,7 +29,12 @@ export async function initialiseApiClient(): Promise<void> {
 /** Convenience proxy — individual service files can do: apiClient.getNodes() */
 export const apiClient: IApiClient = new Proxy({} as IApiClient, {
   get(_target, prop) {
-    return (...args: unknown[]) =>
-      (_client[prop as keyof IApiClient] as (...a: unknown[]) => unknown)(...args);
+    return (...args: unknown[]) => {
+      const method = _client[prop as keyof IApiClient];
+      if (typeof method !== 'function') {
+        throw new Error(`ApiClient: "${String(prop)}" is not a valid method`);
+      }
+      return (method as (...a: unknown[]) => unknown)(...args);
+    };
   },
 });
